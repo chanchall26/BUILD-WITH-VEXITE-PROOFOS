@@ -183,7 +183,7 @@ export default function EmployerPage() {
               type="checkbox"
               checked={calibrate}
               onChange={(e) => setCalibrate(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[#7189ff]"
+              className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
             />
             <span>
               Check what this job is really like today.

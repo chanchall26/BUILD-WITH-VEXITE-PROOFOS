@@ -64,8 +64,8 @@ export function AjqRadar({
       >
         <defs>
           <linearGradient id="ajq-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7189ff" stopOpacity="0.42" />
-            <stop offset="100%" stopColor="#a07cff" stopOpacity="0.14" />
+            <stop offset="0%" stopColor="var(--color-signal)" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="var(--color-violet)" stopOpacity="0.14" />
           </linearGradient>
         </defs>
 
@@ -74,7 +74,7 @@ export function AjqRadar({
             key={step}
             points={polygon(R * step)}
             fill="none"
-            stroke="#1e2540"
+            stroke="var(--color-edge)"
             strokeWidth={step === 1 ? 1.2 : 0.8}
           />
         ))}
@@ -88,7 +88,7 @@ export function AjqRadar({
               y1={CY}
               x2={p.x}
               y2={p.y}
-              stroke="#1e2540"
+              stroke="var(--color-edge)"
               strokeWidth="0.8"
             />
           );
@@ -97,7 +97,7 @@ export function AjqRadar({
         <polygon
           points={shape}
           fill="url(#ajq-fill)"
-          stroke="#7189ff"
+          stroke="var(--color-signal)"
           strokeWidth="1.6"
           strokeLinejoin="round"
         />
@@ -112,8 +112,8 @@ export function AjqRadar({
               cx={p.x}
               cy={p.y}
               r={unproven ? 2.6 : 3.4}
-              fill={unproven ? "#5b6480" : "#a07cff"}
-              stroke="#06080f"
+              fill={unproven ? "var(--color-dim)" : "var(--color-violet)"}
+              stroke="var(--color-void)"
               strokeWidth="1.4"
             />
           );
@@ -128,7 +128,7 @@ export function AjqRadar({
                 <text
                   x={p.x}
                   y={p.y - 1}
-                  fill="#8e98b2"
+                  fill="var(--color-muted)"
                   fontSize="9.5"
                   textAnchor="middle"
                   fontWeight="500"
@@ -138,7 +138,7 @@ export function AjqRadar({
                 <text
                   x={p.x}
                   y={p.y + 10}
-                  fill={score == null ? "#5b6480" : "#7189ff"}
+                  fill={score == null ? "var(--color-dim)" : "var(--color-signal)"}
                   fontSize="9.5"
                   textAnchor="middle"
                   fontFamily="monospace"

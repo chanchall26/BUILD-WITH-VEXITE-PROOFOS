@@ -66,7 +66,7 @@ export function DisclosureControl({
                         : prev.filter((d) => d !== c.dimension),
                     )
                   }
-                  className="h-4 w-4 accent-[#7189ff]"
+                  className="h-4 w-4 accent-[var(--color-signal)]"
                 />
                 <span className="text-[13.5px]">{DIMENSION_LABEL[c.dimension]}</span>
                 <span className="numeral ml-auto text-[13px] text-signal">

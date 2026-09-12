@@ -148,7 +148,7 @@ export function CalibrationStep({
                     className={`rounded-lg border px-3 py-1.5 text-[12.5px] transition-colors ${
                       current.label === label
                         ? LABEL_TONE[label]
-                        : "border-edge text-muted hover:border-[#2b3457] hover:text-bright"
+                        : "border-edge text-muted hover:border-signal-deep hover:text-bright"
                     }`}
                   >
                     {TRUTH_LABEL[label]}
@@ -175,7 +175,7 @@ export function CalibrationStep({
                         [item.id]: { ...current, trust: Number(e.target.value) },
                       }))
                     }
-                    className="h-1 flex-1 cursor-pointer accent-[#7189ff]"
+                    className="h-1 flex-1 cursor-pointer accent-[var(--color-signal)]"
                   />
                   <span className="numeral w-9 text-right text-bright">{current.trust}</span>
                 </label>

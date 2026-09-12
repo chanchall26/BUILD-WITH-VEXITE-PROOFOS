@@ -68,10 +68,12 @@ export default function PassportPage() {
     // A full SD-JWT is far too long for a scannable code, so the QR carries a
     // verification link and the presentation travels as a file or a paste.
     const compact = presentation.length > 1200 ? presentation.slice(0, 0) : presentation;
+    // Black on white regardless of theme. Scanners cope badly with inverted
+    // codes, and the card behind it is white in both themes for the same reason.
     QRCode.toDataURL(compact || `${window.location.origin}/verify`, {
       width: 320,
-      margin: 1,
-      color: { dark: "#e9edf7", light: "#0e121d" },
+      margin: 2,
+      color: { dark: "#000000", light: "#ffffff" },
     })
       .then(setQr)
       .catch(() => setQr(null));
@@ -366,8 +368,8 @@ export default function PassportPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qr}
-                  alt="QR code linking to the PROOFOS verifier"
-                  className="mx-auto w-40 rounded-lg border border-edge"
+                  alt="QR code linking to the PROOFOS checker"
+                  className="mx-auto w-40 rounded-lg border border-edge bg-white p-1"
                 />
                 <p className="mt-2 text-center text-[11px] text-dim">
                   Scan for the verifier. The presentation itself travels as a file.

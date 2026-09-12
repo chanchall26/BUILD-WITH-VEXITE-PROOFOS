@@ -14,10 +14,10 @@ const PAD = 38;
 const SPAN = SIZE - PAD * 2;
 
 const COLOUR: Record<string, string> = {
-  correct: "#3ddc97",
-  partial: "#4fd1e0",
-  wrong: "#f2a93b",
-  dangerous: "#ff6b7a",
+  correct: "var(--color-proof)",
+  partial: "var(--color-data)",
+  wrong: "var(--color-caution)",
+  dangerous: "var(--color-alert)",
 };
 
 export function CalibrationPlot({ result }: { result: CalibrationResult }) {
@@ -32,17 +32,17 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
         role="img"
         aria-label={`Calibration plot. ${result.answered} judgements, mean error ${result.calibrationError} points, bias ${result.bias > 0 ? "towards over-trust" : "towards under-trust"}.`}
       >
-        <rect x={PAD} y={PAD} width={SPAN} height={SPAN} rx="8" fill="#090c15" stroke="#161b2c" />
+        <rect x={PAD} y={PAD} width={SPAN} height={SPAN} rx="8" fill="var(--color-deep)" stroke="var(--color-edge-soft)" />
 
         {/* The over-trust half, shaded because it is the expensive one. */}
         <path
           d={`M ${PAD} ${y(0)} L ${x(100)} ${y(100)} L ${x(100)} ${y(0)} Z`}
-          fill="#ff6b7a"
+          fill="var(--color-alert)"
           opacity="0.04"
         />
         <path
           d={`M ${PAD} ${PAD} L ${x(100)} ${y(100)} L ${PAD} ${y(100)} Z`}
-          fill="#7189ff"
+          fill="var(--color-signal)"
           opacity="0.05"
         />
         <line
@@ -50,14 +50,14 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
           y1={y(0)}
           x2={x(100)}
           y2={y(100)}
-          stroke="#2b3457"
+          stroke="var(--color-edge)"
           strokeDasharray="3 4"
         />
 
-        <text x={x(100) - 6} y={y(4)} fill="#5b6480" fontSize="9" textAnchor="end" fontFamily="monospace">
+        <text x={x(100) - 6} y={y(4)} fill="var(--color-dim)" fontSize="9" textAnchor="end" fontFamily="monospace">
           OVER-TRUST
         </text>
-        <text x={PAD + 6} y={PAD + 13} fill="#5b6480" fontSize="9" fontFamily="monospace">
+        <text x={PAD + 6} y={PAD + 13} fill="var(--color-dim)" fontSize="9" fontFamily="monospace">
           UNDER-TRUST
         </text>
 
@@ -77,7 +77,7 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
               cy={y(o.trust)}
               r={o.truth === "dangerous" ? 6 : 4.5}
               fill={COLOUR[o.truth]}
-              stroke="#06080f"
+              stroke="var(--color-void)"
               strokeWidth="1.5"
             >
               <title>
@@ -90,7 +90,7 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
                 cy={y(o.trust)}
                 r="10"
                 fill="none"
-                stroke="#ff6b7a"
+                stroke="var(--color-alert)"
                 strokeWidth="1"
                 opacity="0.6"
               />
@@ -98,7 +98,7 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
             <text
               x={x(o.idealTrust)}
               y={y(o.trust) - 10}
-              fill="#5b6480"
+              fill="var(--color-dim)"
               fontSize="8"
               textAnchor="middle"
               fontFamily="monospace"
@@ -108,13 +108,13 @@ export function CalibrationPlot({ result }: { result: CalibrationResult }) {
           </g>
         ))}
 
-        <text x={SIZE / 2} y={SIZE - 8} fill="#5b6480" fontSize="9.5" textAnchor="middle">
+        <text x={SIZE / 2} y={SIZE - 8} fill="var(--color-dim)" fontSize="9.5" textAnchor="middle">
           Warranted trust →
         </text>
         <text
           x={12}
           y={SIZE / 2}
-          fill="#5b6480"
+          fill="var(--color-dim)"
           fontSize="9.5"
           textAnchor="middle"
           transform={`rotate(-90 12 ${SIZE / 2})`}

@@ -132,7 +132,7 @@ We are not scoring whether they got the answers right. We are scoring whether th
 
 Gemini reads what the candidate actually built and asks two questions that only the person who built it can answer well.
 
-This replaces webcam spying. You cannot paste an answer to "why did you choose that, and what did it cost you?" You cannot send a friend to answer it. And we do not need your face, your camera, or a browser lockdown to find that out.
+This replaces webcam spying. You cannot paste an answer to "why did you choose that, and what did it cost you?" You cannot send a friend to answer it. And we never need to see your face to find that out.
 
 If your microphone does not work, you type it instead. Same marks. A broken microphone should never cost anyone a job.
 
@@ -341,7 +341,15 @@ From August 2026, using AI to screen candidates in the EU is legally "high-risk"
 
 **What we collect:** the work they produce, their messages to the AI colleague, their calibration answers, a text transcript of two short spoken answers, and simple counts like how many times they pasted.
 
-**What we never collect:** camera, screen recording, browser lockdown, fingerprints, face data, location, device fingerprinting, or any guess about a person beyond the decisions visible in their work. Voice becomes text and nothing else. Guessing emotion from voice in hiring is banned under Article 5, and frankly it is a useless signal anyway.
+**What we never collect:** camera, screen recording, fingerprints, face data, location, device fingerprinting, or any guess about a person beyond the decisions visible in their work. Voice becomes text and nothing else. Guessing emotion from voice in hiring is banned under Article 5, and frankly it is a useless signal anyway.
+
+**Focus mode.** The test runs full screen and counts four things: switching tabs, leaving full screen, copying out of the test, and total seconds away. Three rules make this honest rather than creepy:
+
+1. **Every count is on screen while it is being counted.** No hidden monitoring.
+2. **Nothing is blocked.** You can leave whenever you want, and the test resumes where you were.
+3. **The counts alone prove nothing.** Leaving the test only becomes evidence when most of the work also arrived by paste, because that pair is what fetching an answer looks like. One interruption is just a life happening, and the flags say counts rather than accusations.
+
+We deliberately stopped short of a webcam proctor. Watching people through their camera is the thing this product exists to replace, and adding it back would make every privacy claim above untrue.
 
 **What we store on our servers: nothing.** The calibration answer key travels encrypted, so the browser holds something it cannot read and cannot alter. The result travels as a signed credential the candidate owns.
 

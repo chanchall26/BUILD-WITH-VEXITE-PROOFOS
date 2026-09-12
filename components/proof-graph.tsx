@@ -26,10 +26,10 @@ const NODE_W = 178;
 const NODE_H = 44;
 
 function tone(score: number | null): { fill: string; text: string } {
-  if (score === null) return { fill: "#5b6480", text: "#5b6480" };
-  if (score >= 70) return { fill: "#3ddc97", text: "#3ddc97" };
-  if (score >= 45) return { fill: "#7189ff", text: "#7189ff" };
-  return { fill: "#f2a93b", text: "#f2a93b" };
+  if (score === null) return { fill: "var(--color-dim)", text: "var(--color-dim)" };
+  if (score >= 70) return { fill: "var(--color-proof)", text: "var(--color-proof)" };
+  if (score >= 45) return { fill: "var(--color-signal)", text: "var(--color-signal)" };
+  return { fill: "var(--color-caution)", text: "var(--color-caution)" };
 }
 
 interface NodeProps {
@@ -67,11 +67,11 @@ function Node({ x, y, label, score, evidence, active, hint, onSelect }: NodeProp
         width={NODE_W}
         height={NODE_H}
         rx="9"
-        fill={active ? "#131828" : "#0e121d"}
-        stroke={active ? t.fill : "#1e2540"}
+        fill={active ? "var(--color-raise)" : "var(--color-slab)"}
+        stroke={active ? t.fill : "var(--color-edge)"}
         strokeWidth={active ? 1.6 : 1}
       />
-      <text x={x + 12} y={y + 18} fill="#e9edf7" fontSize="11.5" fontWeight="500">
+      <text x={x + 12} y={y + 18} fill="var(--color-bright)" fontSize="11.5" fontWeight="500">
         {label.length > 24 ? `${label.slice(0, 23)}…` : label}
       </text>
       <text
@@ -84,11 +84,11 @@ function Node({ x, y, label, score, evidence, active, hint, onSelect }: NodeProp
       >
         {score === null ? "—" : score}
       </text>
-      <rect x={x + 12} y={y + 26} width={NODE_W - 24} height="3" rx="1.5" fill="#161b2c" />
+      <rect x={x + 12} y={y + 26} width={NODE_W - 24} height="3" rx="1.5" fill="var(--color-edge-soft)" />
       {score !== null && (
         <rect x={x + 12} y={y + 26} width={width} height="3" rx="1.5" fill={t.fill} />
       )}
-      <text x={x + 12} y={y + 39} fill="#5b6480" fontSize="9" fontFamily="monospace">
+      <text x={x + 12} y={y + 39} fill="var(--color-dim)" fontSize="9" fontFamily="monospace">
         {evidence} obs
       </text>
     </g>
@@ -100,7 +100,7 @@ function edge(x1: number, y1: number, x2: number, y2: number, active: boolean) {
   return (
     <path
       d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`}
-      stroke={active ? "#4a5fd6" : "#1e2540"}
+      stroke={active ? "var(--color-signal-deep)" : "var(--color-edge)"}
       strokeWidth={active ? 1.6 : 1}
       fill="none"
     />

@@ -8,7 +8,7 @@ export function Mark({ size = 26 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" className="shrink-0">
       <path
         d="M16 2.4 27.2 8.6v14.8L16 29.6 4.8 23.4V8.6z"
-        fill="#131828"
+        fill="var(--color-raise)"
         stroke="url(#edge)"
         strokeWidth="1.4"
         strokeLinejoin="round"
@@ -22,12 +22,12 @@ export function Mark({ size = 26 }: { size?: number }) {
       />
       <defs>
         <linearGradient id="edge" x1="4.8" y1="2.4" x2="27.2" y2="29.6">
-          <stop stopColor="#4a5fd6" />
-          <stop offset="1" stopColor="#a07cff" />
+          <stop stopColor="var(--color-signal-deep)" />
+          <stop offset="1" stopColor="var(--color-violet)" />
         </linearGradient>
         <linearGradient id="tick" x1="10.6" y1="20.2" x2="21.6" y2="12.2">
-          <stop stopColor="#7189ff" />
-          <stop offset="1" stopColor="#3ddc97" />
+          <stop stopColor="var(--color-signal)" />
+          <stop offset="1" stopColor="var(--color-proof)" />
         </linearGradient>
       </defs>
     </svg>
