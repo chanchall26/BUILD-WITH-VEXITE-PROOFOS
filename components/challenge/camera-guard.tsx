@@ -87,6 +87,9 @@ const GAZE_AWAY = 0.55;
 const BLINK = 0.6;
 /** Nose position across the face; 0.5 is dead centre. */
 const HEAD_TURN = 0.22;
+/** Head rotation from the face transform, in degrees. Down is looser: keyboards exist. */
+const HEAD_YAW_DEG = 28;
+const HEAD_PITCH_DEG = 32;
 
 interface Frame {
   blank: boolean;
@@ -94,6 +97,41 @@ interface Frame {
   faces: number | null;
   eyesClosed: boolean;
   gazeAway: boolean;
+}
+
+/**
+ * Why the camera did not start, in words that say what to do next. A refusal
+ * with no prompt is the confusing one: it means the site is blocked, either by
+ * an earlier "Block" click or by a Permissions-Policy header, not by the user.
+ */
+async function explainCameraError(e: unknown): Promise<string> {
+  if (e instanceof Error && e.message === "insecure") {
+    return "The camera only works on https (or localhost). Open the site over https and try again.";
+  }
+  const name = e instanceof DOMException ? e.name : "";
+  if (name === "NotAllowedError") {
+    let state: PermissionState | "unknown" = "unknown";
+    try {
+      const q = await navigator.permissions.query({ name: "camera" as PermissionName });
+      state = q.state;
+    } catch {
+      /* Permissions API is not everywhere; fall through to the general text. */
+    }
+    if (state === "denied") {
+      return "The camera is blocked for this site, so the browser did not ask. Click the lock or camera icon in the address bar, set Camera to Allow, then reload the page.";
+    }
+    if (state === "prompt") {
+      return "The browser did not show a permission prompt, which usually means the page is embedded or the camera is blocked by policy. Open the site directly in a tab and try again.";
+    }
+    return "Camera permission was refused. Click the camera icon in the address bar, choose Allow, then try again.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "No camera was found on this device. Plug one in, or check it is enabled in your system settings.";
+  }
+  if (name === "NotReadableError" || name === "AbortError") {
+    return "Another app is using the camera. Close Zoom, Teams, or any other video app, then try again.";
+  }
+  return "The camera could not be started. Check your browser and system camera settings, then try again.";
 }
 
 export function useCameraGuard(recording: boolean) {
@@ -130,10 +168,15 @@ export function useCameraGuard(recording: boolean) {
     setStatus("off");
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<boolean> => {
     setError(null);
     setStatus("starting");
     try {
+      // Browsers only expose the camera on https or localhost. Say so, rather
+      // than letting it fail as an undefined property.
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error("insecure");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
         audio: false,
@@ -148,19 +191,14 @@ export function useCameraGuard(recording: boolean) {
       countsRef.current.cameraDenied = false;
       setCounts({ ...countsRef.current });
       setStatus("on");
+      return true;
     } catch (e) {
       streamRef.current = null;
       countsRef.current.cameraDenied = true;
       setCounts({ ...countsRef.current });
       setStatus("off");
-      const name = e instanceof DOMException ? e.name : "";
-      setError(
-        name === "NotAllowedError"
-          ? "Camera permission was refused. Allow it in the address bar, then try again."
-          : name === "NotFoundError"
-            ? "No camera was found on this device."
-            : "The camera could not be started. Close other apps using it and try again.",
-      );
+      setError(await explainCameraError(e));
+      return false;
     }
   }, []);
 
@@ -182,6 +220,7 @@ export function useCameraGuard(recording: boolean) {
           runningMode: "VIDEO",
           numFaces: 2,
           outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
         });
         if (cancelled) {
           lm.close();
@@ -263,11 +302,19 @@ export function useCameraGuard(recording: boolean) {
         Math.min(s("eyeLookUpLeft"), s("eyeLookUpRight")),
         Math.min(s("eyeLookDownLeft"), s("eyeLookDownRight")),
       );
-      // Head turn: where the nose sits between the two cheek edges.
+      // Head turn, two ways: where the nose sits between the two cheek edges,
+      // and the yaw/pitch of the face transform when the model provides it.
       const pts = result.faceLandmarks[0];
       const width = pts[454].x - pts[234].x;
       const noseRatio = width > 0 ? (pts[1].x - pts[234].x) / width : 0.5;
-      const headTurned = Math.abs(noseRatio - 0.5) > HEAD_TURN;
+      let headTurned = Math.abs(noseRatio - 0.5) > HEAD_TURN;
+      const m = result.facialTransformationMatrixes[0]?.data;
+      if (m && m.length === 16) {
+        // Column-major 4x4; R[r][c] = m[c * 4 + r].
+        const yaw = Math.atan2(m[8], m[10]) * (180 / Math.PI);
+        const pitch = Math.asin(Math.max(-1, Math.min(1, -m[9]))) * (180 / Math.PI);
+        if (Math.abs(yaw) > HEAD_YAW_DEG || Math.abs(pitch) > HEAD_PITCH_DEG) headTurned = true;
+      }
 
       return { faces, eyesClosed, gazeAway: !eyesClosed && (gaze > GAZE_AWAY || headTurned) };
     };

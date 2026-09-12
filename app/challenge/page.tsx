@@ -21,6 +21,7 @@ import {
   useCameraGuard,
   type CameraStatus,
 } from "@/components/challenge/camera-guard";
+import { CameraPermissionDialog } from "@/components/challenge/camera-permission";
 import { CounterpartPanel } from "@/components/challenge/counterpart-panel";
 import { DefenceStep } from "@/components/challenge/defence-step";
 import { AwayCurtain, FocusBar, useFocusGuard } from "@/components/challenge/focus-mode";
@@ -111,6 +112,23 @@ export default function ChallengePage() {
   const { counts, isFullscreen, away, enterFullscreen, exitFullscreen } =
     useFocusGuard(guarded);
   const camera = useCameraGuard(guarded);
+  // The permission popup: points at the browser prompt while it is up, and
+  // explains how to unblock the camera if the browser refused.
+  const [cameraDialog, setCameraDialog] = useState<"closed" | "asking" | "blocked">("closed");
+  async function openCamera() {
+    setCameraDialog("asking");
+    const ok = await camera.start();
+    setCameraDialog(ok ? "closed" : "blocked");
+  }
+  const cameraPermission = (
+    <CameraPermissionDialog
+      open={cameraDialog !== "closed"}
+      phase={cameraDialog === "blocked" ? "blocked" : "asking"}
+      error={camera.error}
+      onRetry={() => void openCamera()}
+      onClose={() => setCameraDialog("closed")}
+    />
+  );
   // Two warnings, then the test ends itself and is scored as it stands.
   const strikePolicy = useStrikePolicy({
     active: guarded,
@@ -139,7 +157,10 @@ export default function ChallengePage() {
     />
   ) : null;
   const cameraCurtain = guarded ? (
-    <CameraCurtain status={camera.status} error={camera.error} onRetry={() => void camera.start()} />
+    <>
+      <CameraCurtain status={camera.status} error={camera.error} onRetry={() => void openCamera()} />
+      {cameraPermission}
+    </>
   ) : null;
 
   useEffect(() => {
@@ -371,6 +392,7 @@ export default function ChallengePage() {
   if (stage === "consent") {
     return (
       <Shell>
+        {cameraPermission}
         <PageHeader
           back={{ label: "Pick something else" }}
           crumbs={[
@@ -441,7 +463,7 @@ export default function ChallengePage() {
               ) : (
                 <Button
                   variant="secondary"
-                  onClick={() => void camera.start()}
+                  onClick={() => void openCamera()}
                   loading={camera.status === "starting"}
                   loadingLabel="Starting camera…"
                   icon={<Camera size={15} />}
