@@ -9,7 +9,6 @@ import {
   UserCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { MarketPulse } from "@/components/market-pulse";
 import { PassportCard } from "@/components/passport-card";
 import { Card } from "@/components/ui/card";
 import { buttonStyles } from "@/components/ui/button";
@@ -147,9 +146,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════ Why this exists */}
+      {/* ══════════════════════════════════════════ How it works */}
       <Section className="border-t border-edge-soft bg-deep">
-        <MarketPulse />
+        <SectionHead
+          eyebrow="How it works"
+          title="Four steps, about sixteen minutes."
+          lead="One short task, one AI teammate that is sometimes wrong, and a passport of what you actually did."
+        />
+        <HowItWorks />
       </Section>
 
       {/* ══════════════════════════════════════════ Why now */}
@@ -176,17 +180,8 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* ══════════════════════════════════════════ How it works */}
-      <Section className="border-t border-edge-soft">
-        <SectionHead
-          eyebrow="How it works"
-          title="Four steps, about sixteen minutes."
-        />
-        <HowItWorks />
-      </Section>
-
       {/* ══════════════════════════════════════════ The demo */}
-      <Section className="border-t border-edge-soft bg-deep">
+      <Section className="border-t border-edge-soft">
         <SectionHead
           eyebrow="See it happen"
           title="Your AI teammate read the wrong chart."
@@ -198,7 +193,7 @@ export default function Home() {
       </Section>
 
       {/* ══════════════════════════════════════════ Promises */}
-      <Section className="border-t border-edge-soft">
+      <Section className="border-t border-edge-soft bg-deep">
         <SectionHead eyebrow="Our promises" title="Four rules we do not break." />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PROMISES.map((p, i) => {
