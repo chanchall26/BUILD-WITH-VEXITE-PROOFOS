@@ -96,27 +96,16 @@ export default function Home() {
             <div className="rise">
               <span className="badge badge-brand">
                 <Sparkles size={12} aria-hidden="true" />
-                Proof of skill for the AI workplace
+                Trusted hiring checks · proof, not guesswork
               </span>
 
-              <h1 className="display mt-5">
-                A CV says what
+              <h1 className="hero-display measure-wide mt-5">
+                Prove you&apos;re a real person
                 <br />
-                you claim.
-                <br />
-                <span className="bg-gradient-to-r from-signal to-violet bg-clip-text text-transparent">
-                  This shows what
-                  <br />
-                  you can prove.
-                </span>
+                who can put AI to work.
               </h1>
 
-              <p className="subhead measure mt-6">
-                Take one short task with an AI teammate that is sometimes wrong. Get proof of
-                what you can actually do, and keep it.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-9 flex flex-wrap items-center gap-3">
                 <Link
                   href="/challenge"
                   className={buttonStyles({ size: "lg" })}

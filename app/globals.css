@@ -69,6 +69,7 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
   --font-display: var(--font-display-face), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-hero: var(--font-hero-face), var(--font-display), sans-serif;
 }
 
 /* Dark by system preference, unless light was explicitly chosen. */
@@ -166,13 +167,32 @@ body {
 
 /* ══════════════════════════════════════════════ Type scale */
 
-/* Headlines and the brand speak in the display face. Body stays Geist. */
+/* The hero headline gets the loudest face; everything else the display face.
+   Body stays Geist, which is easier to read at length. */
 .display {
-  font-family: var(--font-display);
+  font-family: var(--font-hero);
   font-size: clamp(2.5rem, 6.2vw, 4.75rem);
   line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+/* The hero headline alone. Its own face and a warmer three-stop gradient. */
+.hero-display {
+  font-family: var(--font-hero);
+  font-size: clamp(2.5rem, 6.2vw, 4.75rem);
+  line-height: 0.98;
   letter-spacing: -0.035em;
-  font-weight: 700;
+  font-weight: 800;
+  background: linear-gradient(
+    115deg,
+    var(--color-signal) 0%,
+    var(--color-violet) 45%,
+    var(--color-skill-authorship) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .headline {

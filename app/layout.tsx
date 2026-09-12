@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { APP, isDemoMode } from "@/lib/config";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -13,6 +13,12 @@ const display = Space_Grotesk({
   variable: "--font-display-face",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+});
+/** The hero headline only. Louder than the brand voice, used once per page. */
+const hero = Bricolage_Grotesque({
+  variable: "--font-hero-face",
+  subsets: ["latin"],
+  weight: ["700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -46,7 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} ${hero.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
