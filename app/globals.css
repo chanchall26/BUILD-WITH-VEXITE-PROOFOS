@@ -14,17 +14,17 @@
 
 @theme {
   /* Surfaces, back to front */
-  --color-void: #f7f8fc;
-  --color-deep: #fbfcfe;
+  --color-void: #f7f7f4;
+  --color-deep: #fbfbf9;
   --color-slab: #ffffff;
-  --color-raise: #f2f4fa;
-  --color-edge: #dbe0ec;
-  --color-edge-soft: #e8ecf5;
+  --color-raise: #f1f1ed;
+  --color-edge: #dedfd9;
+  --color-edge-soft: #e6e7e2;
 
-  /* Text, loudest to quietest */
-  --color-bright: #0d1020;
-  --color-muted: #4a5266;
-  --color-dim: #737b91;
+  /* Text, loudest to quietest. Ink, not navy: warmer against the paper. */
+  --color-bright: #15171c;
+  --color-muted: #565b66;
+  --color-dim: #7b8290;
 
   /* Brand */
   --color-signal: #4f46e5;
@@ -75,16 +75,16 @@
 /* Dark by system preference, unless light was explicitly chosen. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-void: #070912;
-    --color-deep: #0a0d18;
-    --color-slab: #10141f;
-    --color-raise: #171c2b;
-    --color-edge: #242b40;
-    --color-edge-soft: #1b2132;
+    --color-void: #0c0e12;
+    --color-deep: #101318;
+    --color-slab: #14171d;
+    --color-raise: #1a1e25;
+    --color-edge: #262a33;
+    --color-edge-soft: #1e222a;
 
-    --color-bright: #edf0f8;
-    --color-muted: #a0a8be;
-    --color-dim: #6f7890;
+    --color-bright: #f2f3f0;
+    --color-muted: #9aa0ac;
+    --color-dim: #6f7583;
 
     --color-signal: #818cf8;
     --color-signal-deep: #6366f1;
@@ -113,16 +113,16 @@
 
 /* Dark chosen explicitly. Must also win when the system prefers light. */
 :root[data-theme="dark"] {
-  --color-void: #070912;
-  --color-deep: #0a0d18;
-  --color-slab: #10141f;
-  --color-raise: #171c2b;
-  --color-edge: #242b40;
-  --color-edge-soft: #1b2132;
+  --color-void: #0c0e12;
+  --color-deep: #101318;
+  --color-slab: #14171d;
+  --color-raise: #1a1e25;
+  --color-edge: #262a33;
+  --color-edge-soft: #1e222a;
 
-  --color-bright: #edf0f8;
-  --color-muted: #a0a8be;
-  --color-dim: #6f7890;
+  --color-bright: #f2f3f0;
+  --color-muted: #9aa0ac;
+  --color-dim: #6f7583;
 
   --color-signal: #818cf8;
   --color-signal-deep: #6366f1;
@@ -162,6 +162,7 @@ body {
   color: var(--color-bright);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  isolation: isolate;
   transition: background-color var(--t-base) ease, color var(--t-base) ease;
 }
 
@@ -264,6 +265,38 @@ body {
 }
 
 /* ══════════════════════════════════════════════ Backgrounds */
+
+/*
+  Ambient aurora behind the whole page: three soft colour fields that drift
+  very slowly. Fixed, so it sits still while the page scrolls over it, and the
+  section bands above it are made translucent so it shows through everywhere.
+*/
+.ambient {
+  position: fixed;
+  inset: -12%;
+  z-index: -1; /* body isolates, so this sits above its paper and under all content */
+  pointer-events: none;
+  background:
+    radial-gradient(36% 30% at 16% 12%, color-mix(in srgb, var(--color-signal) 18%, transparent), transparent 70%),
+    radial-gradient(32% 28% at 86% 18%, color-mix(in srgb, var(--color-data) 14%, transparent), transparent 70%),
+    radial-gradient(44% 38% at 60% 96%, color-mix(in srgb, var(--color-violet) 14%, transparent), transparent 72%);
+  will-change: transform, opacity;
+  animation: aurora 26s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  0%   { opacity: 0.8; transform: translate(0, 0) scale(1); }
+  50%  { opacity: 1;   transform: translate(1.4%, -2.2%) scale(1.06); }
+  100% { opacity: 0.85; transform: translate(-1.6%, 1.6%) scale(1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient { animation: none; }
+}
+
+/* Page bands let the aurora through; cards and panels stay solid. */
+section.bg-deep,
+footer.bg-deep {
+  background: color-mix(in srgb, var(--color-deep) 55%, transparent);
+}
 
 /* Soft mesh behind hero sections. Static, so it costs nothing to render. */
 .mesh {
