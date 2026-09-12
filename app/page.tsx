@@ -135,11 +135,11 @@ export default function Home() {
 
             <div className="rise rise-2 mx-auto w-full max-w-sm lg:max-w-none">
               <div className="float-soft">
-                <PassportCard passport={FIXTURE_PASSPORTS[0]} at={SNAPSHOT_AT} />
+                <PassportCard passport={FIXTURE_PASSPORTS[0]} at={SNAPSHOT_AT} showcase />
               </div>
               <p className="mt-3.5 text-center text-[12px] leading-relaxed text-dim">
-                A finished passport. Every number came from 36 recorded moments, and each bar
-                fades as that proof ages.
+                This is what you walk away with. Every number came from 36 recorded moments,
+                and each bar fades as that proof ages.
               </p>
             </div>
           </div>
