@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const metadata = { title: "Guided tour" };
 
@@ -94,15 +95,14 @@ const CAST = [
 
 export default function DemoPage() {
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12">
-      <div className="rise">
-        <span className="eyebrow">Guided tour · three and a half minutes</span>
-        <h1 className="headline mt-3">The whole thing, in order.</h1>
-        <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
-          Everything below works without any setup, so it cannot fail on someone else&apos;s
-          wifi. Each step says what to show and roughly what to say.
-        </p>
-      </div>
+    <div className="mx-auto max-w-4xl px-5 py-10">
+      <PageHeader
+        back={{ href: "/", label: "Back to home" }}
+        crumbs={[{ label: "Home", href: "/" }, { label: "Guided tour" }]}
+        eyebrow="Guided tour · three and a half minutes"
+        title="The whole thing, in order."
+        description="Everything below works without any setup, so it cannot fail on someone else's wifi. Each step says what to show and roughly what to say."
+      />
 
       <ol className="mt-9 space-y-3">
         {PATH.map((s) => (

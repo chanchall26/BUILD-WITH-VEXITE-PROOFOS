@@ -1,6 +1,21 @@
 "use client";
 
+import {
+  BadgeCheck,
+  FileWarning,
+  ScanLine,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX,
+  Sparkles,
+} from "lucide-react";
 import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useToast } from "@/components/ui/toast";
+import { SkillIcon } from "@/components/visuals/skill-meta";
 import { DIMENSION_LABEL, type Dimension, type PassportClaim } from "@/lib/domain";
 import { freshnessFor } from "@/lib/freshness";
 
@@ -24,6 +39,7 @@ export default function VerifyPage() {
   const [token, setToken] = useState("");
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   async function verify(value: string) {
     setBusy(true);
@@ -34,9 +50,15 @@ export default function VerifyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: value }),
       });
-      setOutcome(await res.json());
+      const data = (await res.json()) as Outcome;
+      setOutcome(data);
+      toast.show(
+        data.valid ? (data.revoked ? "Real, but withdrawn" : "Checked — it's real") : "Not valid",
+        data.valid && !data.revoked ? "success" : "error",
+      );
     } catch {
-      setOutcome({ valid: false, reason: "Verifier unreachable." });
+      setOutcome({ valid: false, reason: "We couldn't reach the checker. Try again." });
+      toast.show("Couldn't reach the checker", "error");
     } finally {
       setBusy(false);
     }
@@ -44,13 +66,13 @@ export default function VerifyPage() {
 
   function loadMine() {
     const stored = sessionStorage.getItem("proofos.result");
-    if (!stored) return;
+    if (!stored) return toast.show("No results saved in this browser", "error");
     try {
       const parsed = JSON.parse(stored) as { credential: { sdJwt: string } };
       setToken(parsed.credential.sdJwt);
       void verify(parsed.credential.sdJwt);
     } catch {
-      /* nothing to load */
+      toast.show("Couldn't read your saved results", "error");
     }
   }
 
@@ -73,193 +95,235 @@ export default function VerifyPage() {
     .filter((d) => d.name.startsWith("claim:"))
     .map((d) => d.value as PassportClaim);
 
-  return (
-    <div className="mx-auto max-w-3xl px-5 py-12">
-      <span className="eyebrow">Check a result</span>
-      <h1 className="headline mt-3">Is this real, and has it been changed?</h1>
-      <p className="mt-3 text-[15.5px] leading-relaxed text-muted">
-        Paste someone&apos;s results below. We check the digital signature and tell you
-        straight away. You do not need an account, we do not look anything up, and we do not
-        keep a record that you checked.
-      </p>
-      <p className="mt-2 text-[13px] leading-relaxed text-dim">
-        Anyone can download{" "}
-        <a href="/.well-known/did.json" className="text-signal underline underline-offset-2">
-          our public key
-        </a>{" "}
-        once and do this check themselves, forever, without us.
-      </p>
+  const state = !outcome
+    ? null
+    : !outcome.valid
+      ? "invalid"
+      : outcome.revoked
+        ? "revoked"
+        : "valid";
 
-      <textarea
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-        rows={7}
-        spellCheck={false}
-        placeholder="Paste the long code someone sent you…"
-        aria-label="Results code to check"
-        className="field mt-7 resize-none break-all font-mono text-[11.5px] leading-relaxed"
+  return (
+    <div className="mx-auto max-w-3xl px-5 py-10">
+      <PageHeader
+        back={{ href: "/", label: "Back to home" }}
+        crumbs={[{ label: "Home", href: "/" }, { label: "Check a passport" }]}
+        eyebrow="Check a passport"
+        title="Is this real, and has it been changed?"
+        description="Paste someone's results. We check the signature and answer in milliseconds. No account, and we keep no record that you checked."
       />
 
-      <div className="mt-3 flex flex-wrap gap-2.5">
-        <button
-          className="btn btn-primary btn-lg"
-          disabled={busy || !token.trim()}
-          onClick={() => void verify(token)}
-        >
-          {busy ? "Checking…" : "Check it"}
-        </button>
-        <button className="btn btn-ghost" onClick={loadMine}>
-          Use my own results
-        </button>
-        <button className="btn btn-ghost" disabled={!token} onClick={tamper}>
-          Change one character
-        </button>
-      </div>
-      <p className="mt-2 text-[12.5px] text-dim">
-        Try the last button. It changes a single character, and the check fails instantly.
-        That is what stops anyone editing their scores.
-      </p>
+      {/* Input ------------------------------------------------------------ */}
+      <Card raised className="mt-8 p-5 sm:p-6">
+        <label htmlFor="token" className="label">
+          Paste the results code
+        </label>
+        <textarea
+          id="token"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          rows={5}
+          spellCheck={false}
+          placeholder="Paste the long code someone sent you…"
+          className="field resize-none break-all font-mono text-[11.5px] leading-relaxed"
+        />
+
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <Button
+            size="lg"
+            loading={busy}
+            loadingLabel="Checking…"
+            disabled={!token.trim()}
+            onClick={() => void verify(token)}
+            icon={<ScanLine size={17} />}
+          >
+            Check it
+          </Button>
+          <Button variant="outline" onClick={loadMine}>
+            Use my own results
+          </Button>
+          <Button variant="ghost" disabled={!token} onClick={tamper}>
+            Change one character
+          </Button>
+        </div>
+
+        <p className="mt-3 text-[12.5px] leading-relaxed text-dim">
+          Try that last button. It changes a single character and the check fails instantly.
+          That is what stops anyone editing their scores.
+        </p>
+      </Card>
+
+      {/* Result ----------------------------------------------------------- */}
+      {!outcome && !busy && (
+        <EmptyState
+          className="mt-6"
+          icon={<ShieldCheck size={26} />}
+          title="Nothing checked yet"
+          description="Paste a code above, or press “Use my own results” if you have taken the test in this browser."
+        />
+      )}
 
       {outcome && (
-        <div
-          className={`rise panel mt-7 border p-6 ${
-            outcome.valid
-              ? outcome.revoked
-                ? "border-caution/50"
-                : "border-proof/40"
-              : "border-alert/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[15px] font-bold ${
-                outcome.valid
-                  ? outcome.revoked
-                    ? "bg-caution/15 text-caution"
-                    : "bg-proof/15 text-proof"
-                  : "bg-alert/15 text-alert"
-              }`}
-              aria-hidden="true"
-            >
-              {outcome.valid ? (outcome.revoked ? "!" : "✓") : "✕"}
-            </span>
-            <div>
-              <p
-                className={`text-[16px] font-semibold ${
-                  outcome.valid
-                    ? outcome.revoked
-                      ? "text-caution"
-                      : "text-proof"
-                    : "text-alert"
+        <div className="pop-in mt-6">
+          <Card
+            raised
+            className="overflow-hidden"
+            accent={
+              state === "valid"
+                ? "var(--color-proof)"
+                : state === "revoked"
+                  ? "var(--color-caution)"
+                  : "var(--color-alert)"
+            }
+          >
+            <div className="flex items-start gap-4 p-6">
+              <span
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${
+                  state === "valid"
+                    ? "bg-proof/12 text-proof"
+                    : state === "revoked"
+                      ? "bg-caution/12 text-caution"
+                      : "bg-alert/12 text-alert"
                 }`}
+                aria-hidden="true"
               >
-                {outcome.valid
-                  ? outcome.revoked
-                    ? "Real, but withdrawn"
-                    : "Real and unchanged"
-                  : "Not valid"}
-              </p>
-              <p className="text-[12.5px] text-dim">
-                {outcome.valid
-                  ? outcome.revoked
-                    ? "These results were withdrawn by whoever issued them. Do not rely on them."
-                    : `Checked in ${outcome.ms ?? 0}ms, without contacting anyone.`
-                  : outcome.reason}
-              </p>
-            </div>
-          </div>
+                {state === "valid" ? (
+                  <ShieldCheck size={26} />
+                ) : state === "revoked" ? (
+                  <ShieldAlert size={26} />
+                ) : (
+                  <ShieldX size={26} />
+                )}
+              </span>
 
-          {outcome.valid && (
-            <>
-              <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-edge-soft pt-5 text-[13px] sm:grid-cols-4">
-                <Field label="Name" value={outcome.holder ?? "—"} />
-                <Field label="Moments recorded" value={String(outcome.observationCount ?? 0)} />
-                <Field label="Tests taken" value={String(outcome.sessionCount ?? 0)} />
-                <Field label="Kept private" value={String(outcome.withheld ?? 0)} />
-              </dl>
-
-              {claims.length > 0 && (
-                <div className="mt-5 border-t border-edge-soft pt-5">
-                  <span className="eyebrow">Skills they chose to show</span>
-                  <ul className="mt-3 space-y-2.5">
-                    {claims.map((c) => {
-                      const f = freshnessFor(c.dimension as Dimension, c.verifiedAt);
-                      return (
-                        <li key={c.dimension} className="flex items-baseline gap-3 text-[13px]">
-                          <span>{DIMENSION_LABEL[c.dimension as Dimension]}</span>
-                          <span className="numeral ml-auto text-signal">
-                            {c.score ?? "unproven"}
-                          </span>
-                          <span className="numeral w-16 text-right text-dim">
-                            {Math.round(f * 100)}% fresh
-                          </span>
-                          <span className="numeral w-20 text-right text-dim">
-                            {c.evidence} obs
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-
-              {(outcome.withheld ?? 0) > 0 && (
-                <p className="mt-4 rounded-lg border border-edge-soft bg-deep px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
-                  They kept {outcome.withheld} other{" "}
-                  {outcome.withheld === 1 ? "score" : "scores"} private. You can tell
-                  something was held back, but not what it was. That is by design: applying
-                  for one job should not mean handing over everything.
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`title ${
+                    state === "valid"
+                      ? "text-proof"
+                      : state === "revoked"
+                        ? "text-caution"
+                        : "text-alert"
+                  }`}
+                >
+                  {state === "valid"
+                    ? "Real and unchanged"
+                    : state === "revoked"
+                      ? "Real, but withdrawn"
+                      : "Not valid"}
                 </p>
-              )}
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
+                  {state === "valid"
+                    ? `Checked in ${outcome.ms ?? 0}ms without contacting anyone.`
+                    : state === "revoked"
+                      ? "Whoever issued these results has withdrawn them. Do not rely on them."
+                      : outcome.reason}
+                </p>
+              </div>
+            </div>
 
-              <dl className="mt-5 space-y-1.5 border-t border-edge-soft pt-4 font-mono text-[11px] text-dim">
-                <Row label="issuer" value={outcome.issuer ?? "—"} />
-                <Row label="credential" value={outcome.passportId ?? "—"} />
-                <Row label="issued" value={(outcome.issuedAt ?? "").slice(0, 19)} />
-                <Row label="evidence root" value={outcome.evidenceRoot ?? "—"} />
-              </dl>
-            </>
-          )}
+            {outcome.valid && (
+              <>
+                <dl className="grid grid-cols-2 gap-px border-y border-edge-soft bg-edge-soft sm:grid-cols-4">
+                  {[
+                    { label: "Name", value: outcome.holder ?? "—" },
+                    { label: "Proof recorded", value: String(outcome.observationCount ?? 0) },
+                    { label: "Tests taken", value: String(outcome.sessionCount ?? 0) },
+                    { label: "Kept private", value: String(outcome.withheld ?? 0) },
+                  ].map((f) => (
+                    <div key={f.label} className="bg-slab px-4 py-3.5">
+                      <dt className="text-[10.5px] font-medium uppercase tracking-wider text-dim">
+                        {f.label}
+                      </dt>
+                      <dd className="mt-1 truncate text-[14px] font-semibold">{f.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {claims.length > 0 && (
+                  <div className="p-6">
+                    <p className="eyebrow">Skills they chose to show</p>
+                    <ul className="mt-3 space-y-2.5">
+                      {claims.map((c) => {
+                        const dim = c.dimension as Dimension;
+                        const fresh = freshnessFor(dim, c.verifiedAt);
+                        return (
+                          <li key={c.dimension} className="flex items-center gap-3">
+                            <SkillIcon dimension={dim} size={14} />
+                            <span className="flex-1 text-[13.5px]">{DIMENSION_LABEL[dim]}</span>
+                            <span className="numeral text-[14px] font-semibold text-signal">
+                              {c.score ?? "—"}
+                            </span>
+                            <span className="badge text-[10px]">
+                              {Math.round(fresh * 100)}% fresh
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                {(outcome.withheld ?? 0) > 0 && (
+                  <p className="mx-6 mb-6 rounded-xl border border-edge-soft bg-deep px-4 py-3 text-[12.5px] leading-relaxed text-muted">
+                    They kept {outcome.withheld} other{" "}
+                    {outcome.withheld === 1 ? "score" : "scores"} private. You can tell
+                    something was held back, but not what. Applying for one job should not
+                    mean handing over everything.
+                  </p>
+                )}
+              </>
+            )}
+          </Card>
         </div>
       )}
 
-      <div className="panel mt-8 p-5">
-        <span className="eyebrow">What this check does and does not prove</span>
-        <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-muted">
-          <li className="flex gap-2.5">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
-            It proves we issued exactly these scores, and that nobody has edited them since.
-          </li>
-          <li className="flex gap-2.5">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
-            It proves how much evidence sits behind them, because that count cannot be
-            hidden.
-          </li>
-          <li className="flex gap-2.5">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-alert" />
-            It does not prove the person who sent it is the person who earned it. That is a
-            different problem, and we are not going to pretend we have solved it.
-          </li>
+      {/* What this proves -------------------------------------------------- */}
+      <Card className="mt-6 p-6">
+        <p className="eyebrow">What this check proves</p>
+        <ul className="mt-3.5 space-y-3">
+          {[
+            {
+              ok: true,
+              icon: BadgeCheck,
+              text: "We issued exactly these scores, and nobody has edited them since.",
+            },
+            {
+              ok: true,
+              icon: ShieldCheck,
+              text: "How much proof sits behind them. That count cannot be hidden.",
+            },
+            {
+              ok: false,
+              icon: FileWarning,
+              text: "It does not prove the sender is the person who earned it. That is a different problem, and we will not pretend we have solved it.",
+            },
+          ].map((r) => {
+            const Icon = r.icon;
+            return (
+              <li key={r.text} className="flex gap-3 text-[13.5px] leading-relaxed text-muted">
+                <Icon
+                  size={16}
+                  className={`mt-0.5 shrink-0 ${r.ok ? "text-proof" : "text-caution"}`}
+                  aria-hidden="true"
+                />
+                {r.text}
+              </li>
+            );
+          })}
         </ul>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wider text-dim">{label}</dt>
-      <dd className="mt-0.5 truncate text-bright">{value}</dd>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt>{label}</dt>
-      <dd className="truncate">{value}</dd>
+        <p className="mt-4 flex items-center gap-1.5 border-t border-edge-soft pt-4 text-[12px] text-dim">
+          <Sparkles size={12} aria-hidden="true" />
+          Anyone can download{" "}
+          <a
+            href="/.well-known/did.json"
+            className="font-medium text-signal underline underline-offset-2"
+          >
+            our public key
+          </a>{" "}
+          and run this check themselves, forever, without us.
+        </p>
+      </Card>
     </div>
   );
 }

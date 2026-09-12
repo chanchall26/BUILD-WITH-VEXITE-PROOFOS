@@ -1,15 +1,27 @@
 "use client";
 
+import {
+  ArrowRight,
+  ChevronDown,
+  FileText,
+  Play,
+  Wrench,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CalibrationStep } from "@/components/challenge/calibration-step";
 import { CounterpartPanel } from "@/components/challenge/counterpart-panel";
 import { DefenceStep } from "@/components/challenge/defence-step";
-import {
-  AwayCurtain,
-  FocusBar,
-  useFocusGuard,
-} from "@/components/challenge/focus-mode";
+import { AwayCurtain, FocusBar, useFocusGuard } from "@/components/challenge/focus-mode";
+import { PageHeader } from "@/components/layout/page-header";
+import { Mark } from "@/components/mark";
+import { Button, buttonStyles } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { LoadingSteps } from "@/components/ui/skeleton";
+import { StepBar } from "@/components/ui/progress-ring";
+import { DOMAIN_META, FALLBACK_DOMAIN } from "@/components/visuals/skill-meta";
 import {
   DOMAINS,
   DOMAIN_LABEL,
@@ -19,6 +31,7 @@ import {
   type Domain,
   type Turn,
 } from "@/lib/domain";
+import { cn } from "@/lib/utils";
 
 type Stage =
   | "pick"
@@ -30,26 +43,25 @@ type Stage =
   | "defence"
   | "scoring";
 
-/** The steps a candidate walks through, for the progress bar. */
-const STEPS: { stage: Stage; label: string }[] = [
-  { stage: "brief", label: "Read the situation" },
-  { stage: "work", label: "Do the work" },
-  { stage: "calibration", label: "Judge 10 AI answers" },
-  { stage: "defence", label: "Explain your choices" },
-  { stage: "scoring", label: "Get your results" },
+const STEPS: { stage: Stage; label: string; short: string }[] = [
+  { stage: "brief", label: "Read the situation", short: "Read" },
+  { stage: "work", label: "Do the work", short: "Work" },
+  { stage: "calibration", label: "Judge 10 AI answers", short: "Quiz" },
+  { stage: "defence", label: "Explain your choices", short: "Explain" },
+  { stage: "scoring", label: "Get your results", short: "Results" },
 ];
 
 const WE_RECORD = [
-  "The work you write, and everything you say to your AI teammate.",
-  "Your answers in the trust quiz.",
-  "The words from two short spoken answers. The recording itself is deleted straight after.",
-  "Simple counts: pastes, edits, time taken, and times you left the test.",
+  "What you write, and everything you say to your AI teammate",
+  "Your answers in the trust quiz",
+  "The words from two short spoken answers. The recording is deleted straight after.",
+  "Simple counts: pastes, edits, time, and times you left the test",
 ];
 
 const WE_NEVER = [
-  "No camera. No microphone recording kept. No screen recording.",
-  "Nothing about how you sound, your accent, or your mood.",
-  "Nothing about you outside this task.",
+  "No camera. No screen recording. No kept audio.",
+  "Nothing about how you sound or your accent",
+  "Nothing about you outside this task",
   "No automatic yes or no. A person decides.",
 ];
 
@@ -64,6 +76,7 @@ export default function ChallengePage() {
   const [agreed, setAgreed] = useState(false);
   const [work, setWork] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [calibration, setCalibration] = useState<{
     sealed: string;
     answers: CalibrationAnswer[];
@@ -76,7 +89,6 @@ export default function ChallengePage() {
   const typedChars = useRef(0);
   const revisions = useRef(0);
 
-  // Integrity monitoring runs from the moment the task opens until submission.
   const guarded = stage === "work" || stage === "calibration" || stage === "defence";
   const { counts, isFullscreen, away, enterFullscreen, exitFullscreen } =
     useFocusGuard(guarded);
@@ -96,7 +108,7 @@ export default function ChallengePage() {
         setStage("consent");
       } catch {
         if (cancelled) return;
-        setError("We could not load the sample test. Please refresh.");
+        setError("We couldn't load the sample test. Please refresh.");
         setStage("pick");
       }
     })();
@@ -121,12 +133,16 @@ export default function ChallengePage() {
             }),
           });
       const data = await res.json();
-      if (!res.ok || !data.challenge) throw new Error(data?.error ?? "Could not build it.");
+      if (!res.ok || !data.challenge) throw new Error(data?.error ?? "We couldn't build it.");
       setChallenge(data.challenge);
       setWork(data.challenge.workspaceSeed ?? "");
       setStage("consent");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(
+        e instanceof Error
+          ? `${e.message} Nothing was lost — try again.`
+          : "Something went wrong. Try again.",
+      );
       setStage("pick");
     }
   }
@@ -177,20 +193,34 @@ export default function ChallengePage() {
     }
   }
 
-  // ------------------------------------------------------------------ pick
+  // ══════════════════════════════════════════════════════ pick / building
   if (stage === "pick" || stage === "building") {
-    const busy = stage === "building";
+    if (stage === "building") {
+      return (
+        <Shell>
+          <LoadingSteps
+            title={useSearch ? "Looking up what this job really involves…" : "Building your test…"}
+            active={1}
+            steps={[
+              "Reading what the job needs",
+              "Writing a realistic situation",
+              "Adding real data and tools",
+              "Hiding four mistakes for your teammate",
+            ]}
+          />
+        </Shell>
+      );
+    }
+
     return (
       <Shell>
-        <div className="rise">
-          <span className="eyebrow">The test · about 16 minutes</span>
-          <h1 className="headline mt-3 max-w-2xl">What kind of work do you do?</h1>
-          <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
-            Pick one and we will build a short, realistic task from that world. You will
-            work on it alongside an AI teammate. That teammate will be confidently wrong
-            four times, and noticing is the point.
-          </p>
-        </div>
+        <PageHeader
+          back={{ href: "/", label: "Back to home" }}
+          crumbs={[{ label: "Home", href: "/" }, { label: "Take the test" }]}
+          eyebrow="About 16 minutes"
+          title="What kind of work do you do?"
+          description="Pick one and we'll build a short, realistic task from that world. You'll work on it with an AI teammate that is confidently wrong four times."
+        />
 
         {error && (
           <p className="mt-5 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
@@ -198,35 +228,52 @@ export default function ChallengePage() {
           </p>
         )}
 
-        <div className="rise rise-1 mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {DOMAINS.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDomain(d)}
-              aria-pressed={domain === d}
-              disabled={busy}
-              className={`panel-interactive rounded-xl border p-4 text-left ${
-                domain === d
-                  ? "border-signal bg-wash text-bright"
-                  : "border-edge-soft bg-slab text-muted"
-              }`}
-            >
-              <span className="text-[14px] font-medium">{DOMAIN_LABEL[d]}</span>
-            </button>
-          ))}
+        <div className="rise rise-1 mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {DOMAINS.map((d) => {
+            const meta = DOMAIN_META[d] ?? FALLBACK_DOMAIN;
+            const Icon = meta.icon;
+            const active = domain === d;
+            return (
+              <button
+                key={d}
+                onClick={() => setDomain(d)}
+                aria-pressed={active}
+                className={cn(
+                  "group rounded-2xl border p-4 text-left transition-all duration-200",
+                  active
+                    ? "border-signal bg-wash shadow-[var(--shadow-card)]"
+                    : "border-edge-soft bg-slab hover:-translate-y-0.5 hover:border-signal-deep hover:shadow-[var(--shadow-card)]",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                    active ? "bg-signal text-on-signal" : "bg-raise text-signal",
+                  )}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                </span>
+                <p className="mt-3 text-[14px] font-semibold">{DOMAIN_LABEL[d]}</p>
+                <p className="mt-0.5 text-[11.5px] leading-snug text-dim">{meta.blurb}</p>
+              </button>
+            );
+          })}
         </div>
 
-        <details className="rise rise-2 mt-6 max-w-2xl">
-          <summary className="cursor-pointer text-[13.5px] text-signal">
-            Want it tailored to a specific job? (optional)
+        <details className="rise rise-2 mt-6">
+          <summary className="cursor-pointer text-[13.5px] font-medium text-signal">
+            Tailor it to a specific job (optional)
           </summary>
-          <div className="mt-3">
+          <Card className="mt-3 p-5">
+            <label htmlFor="role" className="label">
+              Paste the job advert
+            </label>
             <textarea
+              id="role"
               value={roleContext}
               onChange={(e) => setRoleContext(e.target.value)}
               rows={3}
-              disabled={busy}
-              placeholder="Paste the job advert, or just say what the person will actually do day to day."
+              placeholder="Or just say what the person will actually do day to day."
               className="field resize-none text-[13.5px]"
             />
             <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-muted">
@@ -234,37 +281,28 @@ export default function ChallengePage() {
                 type="checkbox"
                 checked={useSearch}
                 onChange={(e) => setUseSearch(e.target.checked)}
-                className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
+                className="mt-0.5 h-4 w-4 accent-[var(--color-signal)]"
               />
               <span>
-                Check what this job is really like today first.
+                Check what this job is really like today
                 <span className="block text-[12px] text-dim">
-                  Takes a little longer. We look it up and show you our sources.
+                  Takes a little longer. We look it up and show our sources.
                 </span>
               </span>
             </label>
-          </div>
+          </Card>
         </details>
 
         <div className="rise rise-3 mt-8 flex flex-wrap items-center gap-3">
-          <button
-            className="btn btn-primary btn-lg"
-            disabled={busy}
-            onClick={() => void build(false)}
-          >
-            {busy ? "Building your test…" : "Build my test"}
-          </button>
-          <button className="btn btn-ghost" disabled={busy} onClick={() => void build(true)}>
+          <Button size="lg" onClick={() => void build(false)} iconRight={<ArrowRight size={17} />}>
+            Build my test
+          </Button>
+          <Button variant="outline" size="lg" onClick={() => void build(true)} icon={<Play size={16} />}>
             Use the ready-made one
-          </button>
+          </Button>
         </div>
-        {busy && (
-          <p className="thinking mt-4 text-[13.5px]">
-            Writing the situation, the data, the tools and four hidden mistakes…
-          </p>
-        )}
         <p className="mt-3 text-[12.5px] text-dim">
-          The ready-made one starts instantly. Building a fresh one takes about 30 seconds.
+          The ready-made one starts instantly. A fresh one takes about 30 seconds.
         </p>
       </Shell>
     );
@@ -272,32 +310,35 @@ export default function ChallengePage() {
 
   if (!challenge) return null;
 
-  // --------------------------------------------------------------- consent
+  // ══════════════════════════════════════════════════════ consent
   if (stage === "consent") {
     return (
       <Shell>
-        <div className="rise">
-          <span className="eyebrow">{DOMAIN_LABEL[challenge.domain]}</span>
-          <h1 className="headline mt-3">{challenge.title}</h1>
-          <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
-            {challenge.roleContext} About {challenge.estimatedMinutes} minutes of work, then
-            a short quiz and two spoken questions.
-          </p>
-        </div>
+        <PageHeader
+          back={{ label: "Pick something else" }}
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Take the test", href: "/challenge" },
+            { label: DOMAIN_LABEL[challenge.domain] },
+          ]}
+          eyebrow={`${DOMAIN_LABEL[challenge.domain]} · about ${challenge.estimatedMinutes} minutes`}
+          title={challenge.title}
+          description={challenge.roleContext}
+        />
 
         <div className="rise rise-1 mt-8 grid gap-4 md:grid-cols-2">
-          <div className="panel p-5">
+          <Card accent="var(--color-skill-verification)" className="p-5">
             <h2 className="text-[14.5px] font-semibold">What we record</h2>
             <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
               {WE_RECORD.map((i) => (
                 <li key={i} className="flex gap-2.5">
-                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-signal" />
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-data" />
                   {i}
                 </li>
               ))}
             </ul>
-          </div>
-          <div className="panel p-5">
+          </Card>
+          <Card accent="var(--color-proof)" className="p-5">
             <h2 className="text-[14.5px] font-semibold">What we never do</h2>
             <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
               {WE_NEVER.map((i) => (
@@ -307,220 +348,258 @@ export default function ChallengePage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         </div>
 
-        <div className="panel rise rise-2 mt-4 p-5">
-          <span className="eyebrow">The full notice</span>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+        <details className="rise rise-2 mt-4">
+          <summary className="cursor-pointer text-[13px] font-medium text-signal">
+            Read the full notice
+          </summary>
+          <p className="mt-2 rounded-xl border border-edge-soft bg-deep p-4 text-[13px] leading-relaxed text-muted">
             {challenge.transparencyNotice}
           </p>
-        </div>
+        </details>
 
-        <div className="panel-raised rise rise-3 mt-6 max-w-lg p-5">
-          <label className="block">
-            <span className="mb-1.5 block text-[13.5px] font-medium">Your name</span>
-            <input
-              className="field"
-              value={holder}
-              onChange={(e) => setHolder(e.target.value)}
-              placeholder="This is what goes on your results"
-            />
+        <Card raised className="rise rise-3 mt-6 max-w-lg p-5">
+          <label htmlFor="name" className="label">
+            Your name
           </label>
+          <input
+            id="name"
+            className="field"
+            value={holder}
+            onChange={(e) => setHolder(e.target.value)}
+            placeholder="This is what goes on your results"
+          />
           <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13.5px] leading-relaxed text-muted">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
+              className="mt-0.5 h-4 w-4 accent-[var(--color-signal)]"
             />
-            I have read the above and I want to take this test.
+            I&apos;ve read the above and I want to take this test.
           </label>
-          <button
-            className="btn btn-primary btn-lg mt-5 w-full"
+          <Button
+            size="lg"
+            full
+            className="mt-5"
             disabled={!agreed}
             onClick={() => {
               startedAt.current = Date.now();
               setStage("brief");
             }}
+            iconRight={<ArrowRight size={17} />}
           >
             Start
-          </button>
-        </div>
+          </Button>
+        </Card>
       </Shell>
     );
   }
 
-  // ----------------------------------------------------------------- brief
+  // ══════════════════════════════════════════════════════ brief
   if (stage === "brief") {
     return (
       <Shell>
         <Progress stage="brief" />
-        <div className="rise">
-          <span className="eyebrow">What is happening</span>
-          <h1 className="headline mt-3 max-w-3xl">{challenge.situation}</h1>
-        </div>
+        <PageHeader
+          back={{ label: "Back" }}
+          eyebrow="What's happening"
+          title={challenge.situation}
+          className="mt-6"
+        />
 
         <div className="rise rise-1 mt-8 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
-          <div className="panel-raised p-6">
-            <span className="eyebrow">Your job</span>
+          <Card raised accent="var(--color-signal)" className="p-6">
+            <p className="eyebrow">Your job</p>
             <p className="mt-2 text-[15.5px] leading-relaxed">{challenge.deliverable}</p>
+
             <h2 className="mt-6 text-[13px] font-semibold text-muted">
-              We will be looking for
+              We&apos;ll be looking for
             </h2>
             <ul className="mt-2 space-y-2 text-[13.5px] leading-relaxed text-muted">
               {challenge.requirements.map((r) => (
                 <li key={r.id} className="flex gap-2.5">
-                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-dim" />
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-signal" />
                   {r.text}
                 </li>
               ))}
             </ul>
-            <p className="mt-5 rounded-lg border border-edge-soft bg-deep px-3.5 py-3 text-[13px] leading-relaxed text-muted">
-              Your AI teammate can look things up in {challenge.tools.length} tools. Ask it
-              what it checked. It does not always check the right one.
+
+            <p className="mt-5 flex items-start gap-2 rounded-xl border border-edge-soft bg-deep px-3.5 py-3 text-[13px] leading-relaxed text-muted">
+              <Wrench size={15} className="mt-0.5 shrink-0 text-signal" aria-hidden="true" />
+              Your teammate can open {challenge.tools.length} tools. Ask what they checked —
+              they don&apos;t always pick the right one.
             </p>
-          </div>
+          </Card>
 
           <div className="space-y-3">
+            <p className="eyebrow">What you&apos;ve been given</p>
             {challenge.contextDocs.map((d) => (
-              <div key={d.label} className="panel p-4">
+              <Card key={d.label} className="p-4">
                 <div className="flex items-center gap-2">
-                  <span className="chip">{d.kind}</span>
-                  <span className="text-[12px] text-dim">{d.label}</span>
+                  <FileText size={13} className="shrink-0 text-dim" aria-hidden="true" />
+                  <span className="badge text-[10px]">{d.kind}</span>
+                  <span className="truncate text-[12px] text-dim">{d.label}</span>
                 </div>
                 <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-muted">
                   {d.body}
                 </pre>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
 
         <div className="rise rise-2 mt-8 flex flex-wrap items-center gap-3">
-          <button
-            className="btn btn-primary btn-lg"
+          <Button
+            size="lg"
             onClick={() => {
               setStage("work");
               void enterFullscreen();
             }}
+            iconRight={<ArrowRight size={17} />}
           >
             Open my workspace
-          </button>
+          </Button>
           <span className="text-[12.5px] text-dim">
-            This will go full screen. You can leave at any time.
+            Goes full screen. You can leave any time.
           </span>
         </div>
       </Shell>
     );
   }
 
-  // ----------------------------------------------------------- calibration
+  // ══════════════════════════════════════════════════════ calibration
   if (stage === "calibration") {
     return (
       <div className="mx-auto max-w-4xl px-5 py-8">
-        <Progress stage="calibration" />
-        <div className="mb-4">
-          <FocusBar
-            counts={counts}
-            isFullscreen={isFullscreen}
-            onEnterFullscreen={() => void enterFullscreen()}
-            onExitFullscreen={() => void exitFullscreen()}
+        <AssessmentBar
+          stage="calibration"
+        />
+        <AwayCurtain visible={away} />
+        <div className="mt-5">
+          <CalibrationStep
+            domain={challenge.domain}
+            situation={challenge.situation}
+            onDone={(payload) => {
+              setCalibration(payload);
+              setStage("defence");
+            }}
+            onSkip={() => setStage("defence")}
           />
         </div>
-        <AwayCurtain visible={away} />
-        <CalibrationStep
-          domain={challenge.domain}
-          situation={challenge.situation}
-          onDone={(payload) => {
-            setCalibration(payload);
-            setStage("defence");
-          }}
-          onSkip={() => setStage("defence")}
-        />
       </div>
     );
   }
 
-  // --------------------------------------------------------------- defence
+  // ══════════════════════════════════════════════════════ defence
   if (stage === "defence") {
     return (
-      <Shell>
-        <Progress stage="defence" />
-        <div className="mb-4">
-          <FocusBar
-            counts={counts}
-            isFullscreen={isFullscreen}
-            onEnterFullscreen={() => void enterFullscreen()}
-            onExitFullscreen={() => void exitFullscreen()}
-          />
-        </div>
+      <div className="mx-auto max-w-3xl px-5 py-8">
+        <AssessmentBar
+          stage="defence"
+        />
         <AwayCurtain visible={away} />
         {error && (
-          <p className="mb-4 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
+          <p className="mt-5 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
             {error}
           </p>
         )}
-        <DefenceStep
-          challenge={challenge}
-          work={work}
-          onDone={(answers) => void submit(answers)}
-        />
-      </Shell>
+        <div className="mt-5">
+          <DefenceStep
+            challenge={challenge}
+            work={work}
+            onDone={(answers) => void submit(answers)}
+          />
+        </div>
+      </div>
     );
   }
 
-  // --------------------------------------------------------------- scoring
+  // ══════════════════════════════════════════════════════ scoring
   if (stage === "scoring") {
     return (
       <Shell>
         <Progress stage="scoring" />
-        <div className="panel-raised p-10 text-center">
-          <p className="thinking text-[18px]">Working out your results…</p>
-          <ul className="mx-auto mt-6 max-w-md space-y-2.5 text-left text-[13.5px] text-muted">
-            <li>Checking whether the AI&apos;s four mistakes ended up in your work</li>
-            <li>Reading what you questioned and what you accepted</li>
-            <li>Marking your trust quiz against the real answers</li>
-            <li>Working out six skill scores from what you actually did</li>
-            <li>Signing a result that belongs to you</li>
-          </ul>
+        <div className="mt-8">
+          <LoadingSteps
+            title="Working out your results…"
+            active={2}
+            steps={[
+              "Checking if the AI's mistakes reached your work",
+              "Reading what you questioned and what you accepted",
+              "Marking your trust quiz",
+              "Working out six skill scores",
+              "Signing results that belong to you",
+            ]}
+          />
         </div>
       </Shell>
     );
   }
 
-  // ------------------------------------------------------------- workspace
+  // ══════════════════════════════════════════════════════ workspace
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-5">
+    <div className="mx-auto max-w-[1500px] px-4 py-4">
       <AwayCurtain visible={away} />
 
-      <div className="mb-3">
-        <Progress stage="work" compact />
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="min-w-0">
-          <p className="text-[13.5px] font-medium">Your job</p>
-          <p className="max-w-2xl truncate text-[13px] text-muted">{challenge.deliverable}</p>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className="btn btn-quiet" onClick={() => setStage("brief")}>
-            Read it again
-          </button>
-          <button
-            className="btn btn-primary"
+      <AssessmentBar
+        stage="work"
+        action={
+          <Button
+            size="sm"
             onClick={() => setStage("calibration")}
             disabled={work.trim().length < 40}
-            title={
-              work.trim().length < 40 ? "Write a little more before moving on" : undefined
-            }
+            title={work.trim().length < 40 ? "Write a little more first" : undefined}
+            iconRight={<ArrowRight size={15} />}
           >
             Done — next step
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      <div className="mb-3">
+      {/* Task, collapsible so it never eats the workspace */}
+      <Card className="mt-3 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setTaskOpen(!taskOpen)}
+          aria-expanded={taskOpen}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-raise"
+        >
+          <span className="badge badge-brand shrink-0 text-[10px]">Your job</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-muted">
+            {challenge.deliverable}
+          </span>
+          <ChevronDown
+            size={15}
+            className={cn("shrink-0 text-dim transition-transform", taskOpen && "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+        <div
+          className="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ gridTemplateRows: taskOpen ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
+            <div className="border-t border-edge-soft bg-deep p-4">
+              <p className="text-[13.5px] leading-relaxed">{challenge.situation}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {challenge.contextDocs.map((d) => (
+                  <div key={d.label} className="rounded-lg border border-edge-soft bg-slab p-3">
+                    <p className="truncate text-[11px] font-medium text-dim">{d.label}</p>
+                    <pre className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted">
+                      {d.body}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="mt-3">
         <FocusBar
           counts={counts}
           isFullscreen={isFullscreen}
@@ -529,11 +608,11 @@ export default function ChallengePage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <div className="panel flex min-h-[62vh] flex-col overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-edge-soft px-4 py-2.5">
-            <span className="text-[12.5px] font-medium">Your work</span>
-            <span className="ml-auto text-[11.5px] text-dim">
+      <div className="mt-3 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+        <Card className="flex min-h-[58vh] flex-col overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-edge-soft bg-deep px-4 py-3">
+            <span className="text-[13px] font-semibold">Your work</span>
+            <span className="ml-auto text-[11px] text-dim">
               {work.length} characters · {pasteCount} pastes
             </span>
           </div>
@@ -546,56 +625,84 @@ export default function ChallengePage() {
             }}
             spellCheck={false}
             aria-label="Your work"
-            className="min-h-0 flex-1 resize-none bg-deep p-4 font-mono text-[13px] leading-relaxed text-bright outline-none"
+            className="min-h-0 flex-1 resize-none bg-slab p-4 font-mono text-[13px] leading-relaxed text-bright outline-none"
           />
-          <div className="border-t border-edge-soft px-4 py-2 text-[11.5px] text-dim">
-            Write here. Everything you keep, change or paste becomes part of your record.
-          </div>
-        </div>
+        </Card>
 
-        <div className="panel flex min-h-[62vh] flex-col overflow-hidden">
+        <Card className="flex min-h-[58vh] flex-col overflow-hidden">
           <CounterpartPanel
             challenge={challenge}
             work={work}
             turns={turns}
             onTurns={setTurns}
           />
-        </div>
+        </Card>
       </div>
     </div>
   );
 }
 
-/** Where you are, out of five. */
-function Progress({ stage, compact = false }: { stage: Stage; compact?: boolean }) {
+/* ══════════════════════════════════════════════════════════ helpers */
+
+/** The bar that stays visible through every stage of the test. */
+function AssessmentBar({
+  stage,
+  action,
+}: {
+  stage: Stage;
+  action?: React.ReactNode;
+}) {
   const index = STEPS.findIndex((s) => s.stage === stage);
   return (
-    <ol
-      className={`flex flex-wrap items-center gap-x-2 gap-y-2 ${compact ? "mb-1" : "mb-8"}`}
-      aria-label={`Step ${index + 1} of ${STEPS.length}`}
-    >
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-edge-soft bg-slab px-4 py-3">
+      <Mark size={22} />
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold leading-tight">
+          {STEPS[index]?.label ?? "Test"}
+        </p>
+        <p className="text-[11px] text-dim">
+          Step {index + 1} of {STEPS.length}
+        </p>
+      </div>
+      <StepBar total={STEPS.length} done={index + 1} className="min-w-[120px] flex-1" />
+      {action}
+      <Link
+        href="/"
+        className={buttonStyles({ variant: "ghost", size: "sm" })}
+        title="Leave the test"
+      >
+        <X size={15} />
+        Exit
+      </Link>
+    </div>
+  );
+}
+
+/** The step list, shown on the calmer stages. */
+function Progress({ stage }: { stage: Stage }) {
+  const index = STEPS.findIndex((s) => s.stage === stage);
+  return (
+    <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
       {STEPS.map((s, i) => {
         const done = i < index;
         const now = i === index;
         return (
           <li key={s.stage} className="flex items-center gap-2">
             <span
-              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10.5px] font-semibold ${
+              className={cn(
+                "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
                 done
                   ? "bg-proof/15 text-proof"
                   : now
                     ? "bg-signal text-on-signal"
-                    : "border border-edge text-dim"
-              }`}
+                    : "border border-edge text-dim",
+              )}
             >
               {done ? "✓" : i + 1}
             </span>
-            <span
-              className={`text-[12.5px] ${now ? "font-medium text-bright" : "text-dim"} ${
-                compact && !now ? "hidden sm:inline" : ""
-              }`}
-            >
-              {s.label}
+            <span className={cn("text-[12.5px]", now ? "font-semibold" : "text-dim")}>
+              <span className="hidden sm:inline">{s.label}</span>
+              <span className="sm:hidden">{s.short}</span>
             </span>
             {i < STEPS.length - 1 && (
               <span className="hidden h-px w-5 bg-edge-soft sm:inline-block" />

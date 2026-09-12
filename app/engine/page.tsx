@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { buttonStyles } from "@/components/ui/button";
 import { MODELS } from "@/lib/config";
 import type { GeminiCall } from "@/lib/domain";
 
@@ -108,17 +110,14 @@ export default function HowItWorksPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-12">
-      <div className="rise">
-        <span className="eyebrow">How it works</span>
-        <h1 className="headline mt-3 max-w-2xl">
-          You should know exactly what is measured before you agree to it.
-        </h1>
-        <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
-          Most tests do not tell you this. Here is the whole thing, in four steps, with the
-          list of what we look at and what we refuse to look at.
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl px-5 py-10">
+      <PageHeader
+        back={{ href: "/", label: "Back to home" }}
+        crumbs={[{ label: "Home", href: "/" }, { label: "How it works" }]}
+        eyebrow="How it works"
+        title="Know exactly what is measured before you agree to it."
+        description="Most tests never tell you. Here is the whole thing in four steps, plus what we look at and what we refuse to look at."
+      />
 
       {/* Four steps ------------------------------------------------------ */}
       <ol className="rise rise-1 mt-9 grid gap-px overflow-hidden rounded-xl border border-edge-soft bg-edge-soft sm:grid-cols-2">
@@ -294,10 +293,10 @@ export default function HowItWorksPage() {
       </details>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/challenge" className="btn btn-primary btn-lg">
+        <Link href="/challenge" className={buttonStyles({ size: "lg" })}>
           Take the test
         </Link>
-        <Link href="/demo" className="btn btn-ghost">
+        <Link href="/demo" className={buttonStyles({ variant: "outline" })}>
           Guided tour
         </Link>
       </div>

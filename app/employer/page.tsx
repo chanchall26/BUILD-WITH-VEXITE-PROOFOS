@@ -1,6 +1,17 @@
 "use client";
 
+import { Briefcase, Check, Search, Sparkles, Target, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
+import { Dropzone, type PickedFile } from "@/components/ui/dropzone";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressRing } from "@/components/ui/progress-ring";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
+import { SkillIcon, SKILL_META } from "@/components/visuals/skill-meta";
 import {
   DIMENSION_LABEL,
   type Dimension,
@@ -8,8 +19,9 @@ import {
   type RoleMatch,
   type RoleSpec,
 } from "@/lib/domain";
-import { FIXTURE_PASSPORTS, FIXTURE_NARRATIVE, FIXTURE_ROLE_INPUT } from "@/lib/fixtures";
-import { freshnessFor, freshnessTone, liveTrustHealth } from "@/lib/freshness";
+import { FIXTURE_NARRATIVE, FIXTURE_PASSPORTS, FIXTURE_ROLE_INPUT } from "@/lib/fixtures";
+import { freshnessFor, liveTrustHealth } from "@/lib/freshness";
+import { cn } from "@/lib/utils";
 
 interface Gap {
   title: string;
@@ -19,19 +31,10 @@ interface Gap {
   successLooksLike: string[];
 }
 
-const TONE_CLASS: Record<string, string> = {
-  proof: "is-proof",
-  signal: "",
-  caution: "is-caution",
-  alert: "is-alert",
-};
-
 export default function EmployerPage() {
   const [posting, setPosting] = useState("");
-  const [file, setFile] = useState<{ name: string; data: string; mimeType: string } | null>(
-    null,
-  );
-  const [calibrate, setCalibrate] = useState(false);
+  const [file, setFile] = useState<PickedFile | null>(null);
+  const [useSearch, setUseSearch] = useState(false);
   const [role, setRole] = useState<RoleSpec | null>(null);
   const [sources, setSources] = useState<{ title: string; url: string }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -42,6 +45,7 @@ export default function EmployerPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [gap, setGap] = useState<{ dimension: Dimension; gap: Gap } | null>(null);
   const [gapBusy, setGapBusy] = useState<Dimension | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -61,16 +65,6 @@ export default function EmployerPage() {
     };
   }, []);
 
-  async function attach(f: File | null) {
-    if (!f) return setFile(null);
-    if (f.size > 6_000_000) return setError("Keep the file under 6 MB.");
-    const buf = await f.arrayBuffer();
-    let binary = "";
-    for (const b of new Uint8Array(buf)) binary += String.fromCharCode(b);
-    setFile({ name: f.name, data: btoa(binary), mimeType: f.type || "application/pdf" });
-    setError(null);
-  }
-
   async function analyse() {
     setBusy(true);
     setError(null);
@@ -83,30 +77,32 @@ export default function EmployerPage() {
         body: JSON.stringify({
           text: posting.trim() || undefined,
           file: file ? { data: file.data, mimeType: file.mimeType } : undefined,
-          calibrate,
+          calibrate: useSearch,
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.role) throw new Error(data?.error ?? "Could not read the posting.");
+      if (!res.ok || !data.role) throw new Error(data?.error ?? "We couldn't read that.");
       setRole(data.role);
       setSources(data.sources ?? []);
-      await match(data.role);
+
+      const m = await fetch("/api/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: data.role, passports: pool }),
+      });
+      const matched = await m.json();
+      setMatches(matched.matches ?? []);
+      setSelected(matched.matches?.[0]?.passportId ?? null);
+      toast.show(`Matched ${matched.matches?.length ?? 0} people`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setError(
+        e instanceof Error
+          ? `${e.message} Nothing was lost — try again.`
+          : "Something went wrong. Try again.",
+      );
     } finally {
       setBusy(false);
     }
-  }
-
-  async function match(target: RoleSpec) {
-    const res = await fetch("/api/match", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: target, passports: pool }),
-    });
-    const data = await res.json();
-    setMatches(data.matches ?? []);
-    setSelected(data.matches?.[0]?.passportId ?? null);
   }
 
   async function buildGap(dimension: Dimension) {
@@ -132,117 +128,121 @@ export default function EmployerPage() {
   const currentPassport = pool.find((p) => p.id === current?.passportId);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12">
-      <span className="eyebrow">For employers</span>
-      <h1 className="headline mt-3 max-w-2xl">
-        What does this job need, and who can prove it?
-      </h1>
-      <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
-        Paste your job advert. We work out which six skills the work really needs, then show
-        how much of that each person has actually proved, and how recent that proof is. We
-        never tell you who to hire.
-      </p>
+    <div className="mx-auto max-w-6xl px-5 py-10">
+      <PageHeader
+        back={{ href: "/", label: "Back to home" }}
+        crumbs={[{ label: "Home", href: "/" }, { label: "For employers" }]}
+        eyebrow="For employers"
+        title="What does this job need, and who can prove it?"
+        description="Paste your advert. We work out which six skills the work really needs, then show how much of that each person has proved. We never tell you who to hire."
+      />
 
-      <div className="mt-9 grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-        {/* Posting ------------------------------------------------------ */}
-        <div className="panel-raised h-fit p-5">
-          <label className="block">
-            <span className="mb-1.5 block text-[13.5px] font-medium">Your job advert</span>
-            <textarea
-              value={posting}
-              onChange={(e) => setPosting(e.target.value)}
-              rows={11}
-              placeholder="Paste the advert, or just write a few honest sentences about what this person will actually do."
-              className="field resize-none text-[13px] leading-relaxed"
-            />
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
+        {/* Input ---------------------------------------------------------- */}
+        <Card raised className="h-fit p-5">
+          <label htmlFor="advert" className="label">
+            Your job advert
           </label>
+          <textarea
+            id="advert"
+            value={posting}
+            onChange={(e) => setPosting(e.target.value)}
+            rows={8}
+            placeholder="Paste it here, or write a few honest sentences about what this person will actually do."
+            className="field resize-none text-[13px] leading-relaxed"
+          />
           <button
-            className="btn btn-quiet mt-2 px-0 text-[12.5px]"
+            className="mt-2 text-[12.5px] font-medium text-signal transition-colors hover:text-violet"
             onClick={() => setPosting(FIXTURE_ROLE_INPUT)}
           >
             Use an example advert
           </button>
 
-          <div className="mt-4 border-t border-edge-soft pt-4">
-            <label className="block">
-              <span className="mb-1.5 block text-[13.5px] font-medium">
-                Or upload a PDF or photo
-              </span>
-              <input
-                type="file"
-                accept="application/pdf,image/png,image/jpeg,image/webp"
-                onChange={(e) => void attach(e.target.files?.[0] ?? null)}
-                className="block w-full text-[12.5px] text-dim file:mr-3 file:rounded-md file:border file:border-edge file:bg-raise file:px-3 file:py-1.5 file:text-[12.5px] file:text-bright"
-              />
-            </label>
-            {file && <p className="mt-2 text-[12px] text-data">Attached: {file.name}</p>}
-          </div>
+          <p className="my-4 flex items-center gap-3 text-[11.5px] text-dim">
+            <span className="h-px flex-1 bg-edge-soft" />
+            or upload
+            <span className="h-px flex-1 bg-edge-soft" />
+          </p>
+
+          <Dropzone file={file} onFile={setFile} label="Drop a PDF or photo" />
 
           <label className="mt-4 flex cursor-pointer items-start gap-2.5 border-t border-edge-soft pt-4 text-[13px] leading-relaxed text-muted">
             <input
               type="checkbox"
-              checked={calibrate}
-              onChange={(e) => setCalibrate(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
+              checked={useSearch}
+              onChange={(e) => setUseSearch(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--color-signal)]"
             />
             <span>
-              Check what this job is really like today.
+              Check what this job is really like today
               <span className="block text-[12px] text-dim">
-                Adverts talk a lot about tools and barely mention judgement. We look up what
-                the job actually involves before deciding what matters.
+                Adverts overdo the tools and barely mention judgement.
               </span>
             </span>
           </label>
 
-          <button
-            className="btn btn-primary btn-lg mt-5 w-full"
-            disabled={busy || (!posting.trim() && !file)}
+          <Button
+            size="lg"
+            full
+            className="mt-5"
+            loading={busy}
+            loadingLabel="Reading your advert…"
+            disabled={!posting.trim() && !file}
             onClick={() => void analyse()}
+            icon={<Search size={17} />}
           >
-            {busy ? "Reading your advert…" : "Find who fits"}
-          </button>
-          {error && <p className="mt-3 text-[13px] text-alert">{error}</p>}
-        </div>
+            Find who fits
+          </Button>
 
-        {/* Requirements + pool ------------------------------------------ */}
+          {error && (
+            <p className="mt-3 rounded-xl border border-alert/40 bg-alert/5 px-3.5 py-2.5 text-[13px] text-alert">
+              {error}
+            </p>
+          )}
+        </Card>
+
+        {/* Requirements + people ------------------------------------------ */}
         <div className="space-y-5">
           {!role && !busy && (
-            <div className="panel flex min-h-[320px] items-center justify-center p-8 text-center">
-              <p className="max-w-xs text-[13.5px] leading-relaxed text-dim">
-                The six skills your job needs will appear here, then everyone who has taken
-                the test is scored against them.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Briefcase size={26} />}
+              title="No job analysed yet"
+              description="Paste an advert on the left and we'll show which six skills it really needs, then score everyone against them."
+            />
           )}
 
           {busy && (
-            <div className="panel p-8">
-              <p className="thinking text-[15px]">
-                {calibrate
-                  ? "Looking up what this job really involves, then weighing it up…"
-                  : "Working out which skills this job actually needs…"}
-              </p>
-            </div>
+            <>
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-28 w-full" />
+            </>
           )}
 
           {role && (
-            <div className="rise panel-raised p-5">
+            <Card raised className="rise p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[18px] font-semibold tracking-[-0.015em]">{role.title}</h2>
-                <span className="chip">{role.seniority}</span>
-                {role.source === "fixture" && <span className="chip">fixture</span>}
+                <h2 className="title">{role.title}</h2>
+                <span className="badge">{role.seniority}</span>
               </div>
               <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{role.summary}</p>
 
-              <ul className="mt-4 space-y-2.5">
+              <ul className="mt-5 space-y-3">
                 {role.requirements.map((r) => (
                   <li key={r.dimension}>
-                    <div className="flex items-baseline gap-2 text-[13px]">
-                      <span>{r.label}</span>
-                      <span className="numeral ml-auto text-signal">{r.weight}/5</span>
+                    <div className="flex items-center gap-2.5">
+                      <SkillIcon dimension={r.dimension} size={13} />
+                      <span className="text-[13px] font-medium">{r.label}</span>
+                      <span className="numeral ml-auto text-[12px] text-dim">
+                        {r.weight}/5
+                      </span>
                     </div>
-                    <div className="meter mt-1">
-                      <span style={{ width: `${(r.weight / 5) * 100}%` }} />
+                    <div className="meter mt-1.5 h-1.5">
+                      <span
+                        style={{
+                          width: `${(r.weight / 5) * 100}%`,
+                          background: SKILL_META[r.dimension].colour,
+                        }}
+                      />
                     </div>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-dim">{r.why}</p>
                   </li>
@@ -251,204 +251,222 @@ export default function EmployerPage() {
 
               {sources.length > 0 && (
                 <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 border-t border-edge-soft pt-3 text-[11px] text-dim">
-                  <span className="text-data">Calibrated against:</span>
+                  <span className="inline-flex items-center gap-1 text-data">
+                    <Sparkles size={11} aria-hidden="true" /> Checked against:
+                  </span>
                   {sources.map((s) => (
                     <a
                       key={s.url}
                       href={s.url}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="hover:text-muted"
+                      className="transition-colors hover:text-signal"
                     >
-                      {s.title.slice(0, 40)}
+                      {s.title.slice(0, 38)}
                     </a>
                   ))}
                 </p>
               )}
-            </div>
+            </Card>
           )}
 
           {matches.length > 0 && (
-            <div className="panel p-5">
-              <span className="eyebrow">How much they have proved</span>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">
-                How much of what this job needs each person has actually proved, and proved
-                recently. This is not a ranking of people.
-              </p>
-              <ul className="mt-4 space-y-2.5">
+            <div className="rise rise-1">
+              <div className="mb-3 flex items-center gap-2">
+                <Users size={15} className="text-dim" aria-hidden="true" />
+                <h2 className="title">Who has proved what</h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {matches.map((m) => {
                   const active = current?.passportId === m.passportId;
                   return (
-                    <li key={m.passportId}>
-                      <button
-                        onClick={() => setSelected(m.passportId)}
-                        className={`w-full rounded-xl border p-4 text-left transition-colors ${
-                          active
-                            ? "border-signal bg-raise"
-                            : "border-edge-soft bg-slab hover:border-edge"
-                        }`}
-                      >
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[15px] font-medium">{m.holder}</span>
-                          <span className="numeral ml-auto text-[15px] text-signal">
-                            {m.coverage}%
-                          </span>
-                        </div>
-                        <div className="meter mt-2">
-                          <span style={{ width: `${m.coverage}%` }} />
-                        </div>
-                        <p className="mt-2 text-[12px] text-dim">
-                          {m.gaps.length === 0
-                            ? "Every skill this job needs is covered."
-                            : `Still to prove: ${m.gaps.map((g) => DIMENSION_LABEL[g]).join(", ")}`}
-                        </p>
-                      </button>
-                    </li>
+                    <button
+                      key={m.passportId}
+                      onClick={() => setSelected(m.passportId)}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-2xl border p-4 text-left transition-all duration-200",
+                        active
+                          ? "border-signal bg-wash shadow-[var(--shadow-card)]"
+                          : "border-edge-soft bg-slab hover:-translate-y-0.5 hover:border-signal-deep hover:shadow-[var(--shadow-card)]",
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[14.5px] font-semibold">{m.holder}</span>
+                        <CountUp
+                          value={m.coverage}
+                          suffix="%"
+                          className="numeral ml-auto text-[17px] font-bold text-signal"
+                        />
+                      </div>
+                      <div className="meter mt-2.5 h-1.5">
+                        <span style={{ width: `${m.coverage}%` }} />
+                      </div>
+                      <p className="mt-2 text-[11.5px] leading-snug text-dim">
+                        {m.gaps.length === 0
+                          ? "Every skill covered"
+                          : `Still to prove: ${m.gaps.map((g) => SKILL_META[g].short).join(", ")}`}
+                      </p>
+                    </button>
                   );
                 })}
-              </ul>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Detail ---------------------------------------------------------- */}
+      {/* Detail ------------------------------------------------------------ */}
       {current && currentPassport && (
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="panel p-6">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-[20px] font-semibold tracking-[-0.02em]">
-                {current.holder}
-              </h2>
-              <span className="numeral text-[13px] text-signal">
-                {current.coverage}% covered
-              </span>
-              <span className="ml-auto text-[12px] text-dim">
-                trust health {liveTrustHealth(currentPassport.claims) ?? "—"} ·{" "}
-                {currentPassport.observationCount} observations
-              </span>
+        <div className="rise mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <Card raised className="p-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <ProgressRing value={current.coverage} size={88} stroke={8} label="covered" />
+              <div className="min-w-0 flex-1">
+                <h2 className="title">{current.holder}</h2>
+                <p className="mt-1 text-[12.5px] text-dim">
+                  Trust score {liveTrustHealth(currentPassport.claims) ?? "—"} ·{" "}
+                  {currentPassport.observationCount} pieces of proof
+                </p>
+                {FIXTURE_NARRATIVE[current.passportId] && (
+                  <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted">
+                    {FIXTURE_NARRATIVE[current.passportId]}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {FIXTURE_NARRATIVE[current.passportId] && (
-              <p className="mt-3 border-l-2 border-edge pl-3 text-[14px] leading-relaxed text-muted">
-                {FIXTURE_NARRATIVE[current.passportId]}
-              </p>
-            )}
+            {/* Coverage: a table on desktop, cards on mobile */}
+            <ul className="mt-6 space-y-2.5">
+              {current.rows.map((r) => (
+                <li
+                  key={r.dimension}
+                  className={cn(
+                    "rounded-xl border p-3.5",
+                    r.covered ? "border-proof/30 bg-proof/[0.04]" : "border-edge-soft bg-deep",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <SkillIcon dimension={r.dimension} size={13} />
+                    <span className="text-[13.5px] font-medium">{r.label}</span>
+                    {r.covered ? (
+                      <Check size={15} className="text-proof" aria-hidden="true" />
+                    ) : (
+                      <X size={15} className="text-caution" aria-hidden="true" />
+                    )}
+                    <span className="ml-auto flex items-center gap-3 text-[11.5px] text-dim">
+                      <span>job needs {r.required}/5</span>
+                      <span className="numeral font-semibold text-bright">
+                        {r.held ?? "—"}
+                      </span>
+                      <span>{Math.round(r.freshness * 100)}% fresh</span>
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-muted">{r.note}</p>
+                </li>
+              ))}
+            </ul>
 
-            <table className="mt-5 w-full border-collapse text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-edge">
-                  <th className="py-2 pr-3 font-medium text-dim">Skill</th>
-                  <th className="py-2 pr-3 font-medium text-dim">Job needs</th>
-                  <th className="py-2 pr-3 font-medium text-dim">They have</th>
-                  <th className="py-2 pr-3 font-medium text-dim">Fresh</th>
-                  <th className="py-2 font-medium text-dim">Why</th>
-                </tr>
-              </thead>
-              <tbody>
-                {current.rows.map((r) => (
-                  <tr key={r.dimension} className="border-b border-edge-soft align-top">
-                    <td className="py-2.5 pr-3">{r.label}</td>
-                    <td className="numeral py-2.5 pr-3 text-dim">{r.required}/5</td>
-                    <td
-                      className={`numeral py-2.5 pr-3 ${r.covered ? "text-proof" : "text-caution"}`}
-                    >
-                      {r.held ?? "—"}
-                    </td>
-                    <td className="numeral py-2.5 pr-3 text-dim">
-                      {Math.round(r.freshness * 100)}%
-                    </td>
-                    <td className="py-2.5 text-[12px] leading-relaxed text-muted">{r.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <p className="mt-5 rounded-lg border border-edge-soft bg-deep px-4 py-3 text-[13.5px] leading-relaxed text-muted">
-              <span className="font-medium text-bright">{current.holder}</span> has proved{" "}
-              <span className="font-medium text-signal">{current.coverage}%</span> of what
+            <p className="mt-5 rounded-xl border border-edge-soft bg-deep px-4 py-3.5 text-[13.5px] leading-relaxed text-muted">
+              <span className="font-semibold text-bright">{current.holder}</span> has proved{" "}
+              <span className="font-semibold text-signal">{current.coverage}%</span> of what
               this job needs. We are not telling you to hire or reject. You decide, with the
               proof in front of you.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2.5">
-              <button className="btn btn-primary">Invite to interview</button>
-              <button className="btn btn-ghost">Ask for more proof</button>
-              <button className="btn btn-quiet">Save a decision</button>
+              <Button size="sm">Invite to interview</Button>
+              <Button variant="outline" size="sm">
+                Ask for more proof
+              </Button>
+              <Button variant="ghost" size="sm">
+                Save a decision
+              </Button>
             </div>
             <p className="mt-2 text-[11.5px] text-dim">
-              These buttons do nothing in the demo. In a real deployment they write the
-              record of who decided what, which the law now requires.
+              These do nothing in the demo. In a real deployment they record who decided
+              what, which the law now requires.
             </p>
-          </div>
+          </Card>
 
-          <div className="space-y-6">
-            <div className="panel p-5">
-              <span className="eyebrow">Freshness</span>
-              <ul className="mt-3 space-y-3">
-                {currentPassport.claims.map((c) => {
-                  const f = freshnessFor(c.dimension, c.verifiedAt);
-                  return (
-                    <li key={c.dimension}>
-                      <div className="flex items-baseline gap-2 text-[12.5px]">
-                        <span>{DIMENSION_LABEL[c.dimension]}</span>
-                        <span className="numeral ml-auto text-dim">
-                          {Math.round(f * 100)}%
-                        </span>
-                      </div>
-                      <div className={`meter mt-1 ${TONE_CLASS[freshnessTone(f)]}`}>
-                        <span style={{ width: `${f * 100}%` }} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
+          <div className="space-y-5">
             {current.gaps.length > 0 && (
-              <div className="panel p-5">
-                <span className="eyebrow">Close the gap</span>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-                  A missing capability is not a rejection. It is a twenty-minute exercise
-                  that would put the evidence on the record.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
+              <Card className="p-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-signal">
+                    <Target size={17} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-[15px] font-semibold">Close the gap</h3>
+                    <p className="text-[12px] text-dim">Not a rejection. A short exercise.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
                   {current.gaps.map((d) => (
-                    <button
+                    <Button
                       key={d}
-                      className="btn btn-ghost text-[12.5px]"
-                      disabled={gapBusy === d}
+                      variant="outline"
+                      size="sm"
+                      loading={gapBusy === d}
+                      loadingLabel="Designing…"
                       onClick={() => void buildGap(d)}
                     >
-                      {gapBusy === d ? "Designing…" : DIMENSION_LABEL[d]}
-                    </button>
+                      {DIMENSION_LABEL[d]}
+                    </Button>
                   ))}
                 </div>
 
                 {gap && (
-                  <div className="rise mt-4 rounded-lg border border-signal-deep/40 bg-wash/50 p-4">
+                  <div className="pop-in mt-4 rounded-xl border border-signal/35 bg-wash p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[14px] font-medium">{gap.gap.title}</h3>
-                      <span className="chip ml-auto">{gap.gap.minutes} min</span>
+                      <h4 className="text-[14px] font-semibold">{gap.gap.title}</h4>
+                      <span className="badge badge-brand ml-auto text-[10px]">
+                        {gap.gap.minutes} min
+                      </span>
                     </div>
                     <p className="mt-2 text-[13px] leading-relaxed text-muted">
                       {gap.gap.prompt}
                     </p>
-                    <p className="mt-2 text-[12px] leading-relaxed text-dim">
-                      {gap.gap.whatItProves}
-                    </p>
-                    <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted">
+                    <ul className="mt-2.5 space-y-1 text-[12px] leading-relaxed text-muted">
                       {gap.gap.successLooksLike.map((s) => (
                         <li key={s} className="flex gap-2">
-                          <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-proof" />
+                          <Check
+                            size={12}
+                            className="mt-1 shrink-0 text-proof"
+                            aria-hidden="true"
+                          />
                           {s}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-              </div>
+              </Card>
             )}
+
+            <Card className="p-5">
+              <h3 className="text-[15px] font-semibold">How fresh their proof is</h3>
+              <ul className="mt-3.5 space-y-3">
+                {currentPassport.claims.map((c) => {
+                  const f = freshnessFor(c.dimension, c.verifiedAt);
+                  return (
+                    <li key={c.dimension}>
+                      <div className="flex items-center gap-2 text-[12.5px]">
+                        <SkillIcon dimension={c.dimension} size={11} tile={false} />
+                        <span className="truncate">{DIMENSION_LABEL[c.dimension]}</span>
+                        <span className="numeral ml-auto text-dim">
+                          {Math.round(f * 100)}%
+                        </span>
+                      </div>
+                      <div className="meter mt-1 h-1">
+                        <span style={{ width: `${f * 100}%` }} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
           </div>
         </div>
       )}

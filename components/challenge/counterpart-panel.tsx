@@ -1,18 +1,26 @@
 "use client";
 
+import { CornerDownLeft, Search, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/markdown";
+import { Button } from "@/components/ui/button";
 import type { ChallengeSpec, Turn } from "@/lib/domain";
 
+
 /**
- * The AI counterpart panel.
+ * The AI teammate.
  *
- * The tool strip above each reply is the important part of this component. It
- * shows what the counterpart went and looked at before answering, which means
- * a candidate can see that it consulted the database metrics and never opened
- * the endpoint latency. Everything the assessment measures is visible to the
- * person being assessed while it is happening.
+ * The chip row above each reply is the important part of this component. It
+ * shows what the teammate went and looked at before answering, which is how a
+ * candidate can see it consulted the database chart and never opened the one
+ * that mattered. Everything the assessment measures is visible to the person
+ * being assessed, while it happens.
  */
+
+function niceToolName(name: string) {
+  return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function CounterpartPanel({
   challenge,
   work,
@@ -52,7 +60,7 @@ export function CounterpartPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge, work, history: turns, message }),
       });
-      if (!res.ok || !res.body) throw new Error("counterpart unavailable");
+      if (!res.ok || !res.body) throw new Error("unavailable");
 
       const beatHeader = res.headers.get("X-Proofos-Beat");
       const toolHeader = res.headers.get("X-Proofos-Tools");
@@ -93,7 +101,7 @@ export function CounterpartPanel({
         ...withCandidate,
         {
           role: "counterpart",
-          text: "_I've dropped off for a moment. Carry on without me — working the problem alone is a legitimate way to do this._",
+          text: "_I've dropped off for a moment. Carry on without me — working alone is a real choice here._",
           at: Date.now(),
         },
       ]);
@@ -107,53 +115,63 @@ export function CounterpartPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-edge-soft px-4 py-2.5">
-        <span className="h-2 w-2 rounded-full bg-signal" />
-        <span className="text-[12.5px] font-medium">AI teammate</span>
-        <span className="ml-auto text-[11px] text-dim">
-          {asked} {asked === 1 ? "message" : "messages"}
+      {/* Identity ------------------------------------------------------- */}
+      <div className="flex items-center gap-2.5 border-b border-edge-soft bg-deep px-4 py-3">
+        <span
+          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-on-signal"
+          style={{
+            background: "linear-gradient(135deg,var(--color-signal),var(--color-violet))",
+          }}
+          aria-hidden="true"
+        >
+          <Sparkles size={15} />
+          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-deep bg-proof" />
         </span>
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold leading-tight">Your AI teammate</p>
+          <p className="text-[11px] text-dim">
+            {busy ? "working…" : "ready"} · {asked} {asked === 1 ? "message" : "messages"}
+          </p>
+        </div>
       </div>
 
+      {/* Conversation --------------------------------------------------- */}
       <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {turns.length === 0 && (
-          <div className="rounded-lg border border-edge-soft bg-deep p-4 text-[13px] leading-relaxed text-muted">
-            <p className="mb-2 font-medium text-bright">
-              Talk to them like a colleague, not a search box.
-            </p>
-            <p>
-              They can look things up, so ask them what they checked. If the reasoning does
-              not add up, say so. You can also ignore them completely and do it yourself.
-              That is a real choice, and your record will say that is what you did.
-            </p>
+          <div className="rounded-xl border border-edge-soft bg-deep p-4">
+            <p className="text-[13px] font-medium">Treat them like a colleague.</p>
+            <ul className="mt-2.5 space-y-1.5 text-[12.5px] leading-relaxed text-muted">
+              <li>They can look things up. Ask what they checked.</li>
+              <li>If the reasoning does not add up, say so.</li>
+              <li>Ignoring them and working alone is a real choice.</li>
+            </ul>
           </div>
         )}
 
         {turns.map((turn, i) => (
           <div key={i}>
-            <div className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.14em] text-dim">
-              {turn.role === "candidate" ? "You" : "Counterpart"}
-            </div>
-
             {turn.role === "candidate" ? (
-              <p className="whitespace-pre-wrap rounded-lg border border-edge-soft bg-raise p-3 text-[13.5px] leading-relaxed">
-                {turn.text}
-              </p>
+              <div className="flex justify-end">
+                <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-signal px-3.5 py-2.5 text-[13.5px] leading-relaxed text-on-signal">
+                  {turn.text}
+                </p>
+              </div>
             ) : (
-              <div className="rounded-lg border border-edge-soft bg-void">
+              <div className="max-w-[92%]">
                 {turn.toolCalls && turn.toolCalls.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 border-b border-edge-soft px-3 py-2">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-dim">
-                      they opened
+                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 text-[10.5px] font-medium uppercase tracking-wider text-dim">
+                      <Search size={10} aria-hidden="true" />
+                      opened
                     </span>
                     {turn.toolCalls.map((c, j) => (
-                      <span key={j} className="chip border-data/30 text-data">
-                        {c.name}
+                      <span key={j} className="badge badge-data text-[10px]">
+                        {niceToolName(c.name)}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="p-3">
+                <div className="rounded-2xl rounded-bl-md border border-edge-soft bg-deep px-3.5 py-3">
                   {turn.text ? (
                     <Markdown text={turn.text} className="text-[13.5px]" />
                   ) : (
@@ -166,10 +184,14 @@ export function CounterpartPanel({
         ))}
 
         {consulting && (
-          <p className="thinking text-[12.5px]">looking things up before answering…</p>
+          <div className="flex items-center gap-2 text-[12.5px] text-dim">
+            <Search size={13} className="animate-pulse" aria-hidden="true" />
+            <span className="thinking">looking things up…</span>
+          </div>
         )}
       </div>
 
+      {/* Composer ------------------------------------------------------- */}
       <div className="border-t border-edge-soft p-3">
         <div className="flex items-end gap-2">
           <textarea
@@ -182,20 +204,23 @@ export function CounterpartPanel({
               }
             }}
             rows={2}
-            placeholder="Ask a question, or push back… (Ctrl+Enter to send)"
+            placeholder="Ask a question, or push back…"
             aria-label="Message your AI teammate"
             className="field resize-none text-[13.5px]"
           />
-          <button
+          <Button
             onClick={() => void send()}
-            disabled={busy || !draft.trim()}
-            className="btn btn-primary h-[46px]"
+            disabled={!draft.trim()}
+            loading={busy}
+            loadingLabel=""
+            className="h-[48px] px-3.5"
+            aria-label="Send"
           >
-            {busy ? "…" : "Send"}
-          </button>
+            <CornerDownLeft size={16} />
+          </Button>
         </div>
-        <p className="mt-2 text-[11px] text-dim">
-          They can open: {challenge.tools.map((t) => t.name).join(", ") || "nothing"}
+        <p className="mt-2 truncate text-[10.5px] text-dim">
+          They can open: {challenge.tools.map((t) => niceToolName(t.name)).join(", ") || "nothing"}
         </p>
       </div>
     </div>

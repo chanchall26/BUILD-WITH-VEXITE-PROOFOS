@@ -1,21 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  Award,
+  CircleCheck,
+  Copy,
+  Download,
+  Lightbulb,
+  PartyPopper,
+  ScanLine,
+  Undo2,
+} from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { PageHeader } from "@/components/layout/page-header";
 import { AjqRadar } from "@/components/ajq-radar";
 import { CalibrationPlot } from "@/components/calibration-plot";
 import { DisclosureControl } from "@/components/disclosure-control";
-import { ProofGraph } from "@/components/proof-graph";
+import { SkillCard } from "@/components/results/skill-card";
+import { Button, buttonStyles } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressRing } from "@/components/ui/progress-ring";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
+import { SkillIcon } from "@/components/visuals/skill-meta";
 import {
-  DIMENSION_BLURB,
   DIMENSION_LABEL,
   type Dimension,
   type Passport,
   type SessionResult,
 } from "@/lib/domain";
-import { freshnessFor, freshnessTone, liveTrustHealth } from "@/lib/freshness";
 import { FIXTURE_PASSPORTS } from "@/lib/fixtures";
+import { freshnessFor, freshnessTone, liveTrustHealth } from "@/lib/freshness";
+import { cn } from "@/lib/utils";
 
 interface Stored {
   result: SessionResult;
@@ -36,8 +55,8 @@ export default function PassportPage() {
   const [presentation, setPresentation] = useState<string | null>(null);
   const [disclosed, setDisclosed] = useState<Dimension[]>([]);
   const [qr, setQr] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [revoked, setRevoked] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -65,12 +84,8 @@ export default function PassportPage() {
 
   useEffect(() => {
     if (!presentation) return;
-    // A full SD-JWT is far too long for a scannable code, so the QR carries a
-    // verification link and the presentation travels as a file or a paste.
-    const compact = presentation.length > 1200 ? presentation.slice(0, 0) : presentation;
-    // Black on white regardless of theme. Scanners cope badly with inverted
-    // codes, and the card behind it is white in both themes for the same reason.
-    QRCode.toDataURL(compact || `${window.location.origin}/verify`, {
+    // Black on white in both themes. Scanners cope badly with inverted codes.
+    QRCode.toDataURL(`${window.location.origin}/verify`, {
       width: 320,
       margin: 2,
       color: { dark: "#000000", light: "#ffffff" },
@@ -79,158 +94,186 @@ export default function PassportPage() {
       .catch(() => setQr(null));
   }, [presentation]);
 
-  const live = useMemo(
-    () => (data ? liveTrustHealth(data.passport.claims) : null),
-    [data],
-  );
-
   if (missing) {
     return (
-      <Shell>
-        <h1 className="headline">No passport in this browser.</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-muted">
-          Take a proof challenge to earn one, or open a seeded passport to see what a
-          finished record looks like.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/challenge" className="btn btn-primary">
-            Take the challenge
-          </Link>
-          <Link href="/employer" className="btn btn-ghost">
-            See a seeded record
-          </Link>
-          <Link href="/verify" className="btn btn-quiet">
-            Verify a credential →
-          </Link>
-        </div>
-        <p className="mt-8 text-[12.5px] text-dim">
-          Nothing is stored on our side. A passport lives in your browser and in the signed
-          credential you hold, which is the point.
-        </p>
-      </Shell>
+      <div className="mx-auto max-w-3xl px-5 py-10">
+        <PageHeader back={{ href: "/", label: "Back to home" }} title="No results here yet" />
+        <EmptyState
+          className="mt-8"
+          icon={<Award size={26} />}
+          title="You haven't taken the test in this browser"
+          description="Take it once and your results appear here. Nothing is stored on our side, so they live in your browser and in the code you keep."
+          action={
+            <Link href="/challenge" className={buttonStyles({ size: "lg" })}>
+              Take the test
+            </Link>
+          }
+          secondary={
+            <Link href="/employer" className={buttonStyles({ variant: "outline" })}>
+              See an example
+            </Link>
+          }
+        />
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <Shell>
-        <p className="thinking text-[15px]">Opening your passport…</p>
-      </Shell>
+      <div className="mx-auto max-w-6xl px-5 py-10">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="mt-6 h-48 w-full" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
+        </div>
+      </div>
     );
   }
 
   const { passport, result, credential } = data;
+  const health = liveTrustHealth(passport.claims);
+  const proven = passport.claims.filter((c) => c.score !== null).length;
   const unproven = passport.claims.filter((c) => c.score === null);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12">
-      {/* Headline -------------------------------------------------------- */}
-      <div className="rise panel-raised relative overflow-hidden p-6 sm:p-8">
-        <div className="signal-rule absolute inset-x-0 top-0 h-px" />
-        <div className="flex flex-wrap items-start gap-6">
-          <div className="min-w-0 flex-1">
-            <span className="eyebrow">Proof passport</span>
-            <h1 className="headline mt-2">{passport.holder}</h1>
-            <p className="mt-1 text-[14px] text-muted">
-              {result.observations.length} observations across {passport.sessions.length}{" "}
-              {passport.sessions.length === 1 ? "session" : "sessions"} ·{" "}
-              {passport.claims.filter((c) => c.score !== null).length} of{" "}
-              {passport.claims.length} capabilities proven
-            </p>
-            {result.source === "fixture" && (
-              <span className="chip mt-3 border-signal-deep/50 text-signal">
-                fixture mode — no API key configured
-              </span>
-            )}
-          </div>
+    <div className="mx-auto max-w-6xl px-5 py-10">
+      <PageHeader
+        back={{ href: "/challenge", label: "Back to the test" }}
+        crumbs={[{ label: "Home", href: "/" }, { label: "My results" }]}
+        eyebrow="Your results"
+        title={
+          <span className="flex flex-wrap items-center gap-3">
+            {passport.holder}
+            <span className="badge badge-proof">
+              <PartyPopper size={12} aria-hidden="true" />
+              Test complete
+            </span>
+          </span>
+        }
+      />
 
-          <div className="flex gap-8">
-            <Headline label="Trust health" value={live} hint="freshness-weighted" />
-            <Headline
-              label="AI judgment"
-              value={passport.ajq.score}
-              hint="across six facets"
-            />
+      {/* Headline --------------------------------------------------------- */}
+      <Card raised className="rise rise-1 mt-7 overflow-hidden">
+        <div className="mesh absolute inset-0 -z-10" aria-hidden="true" />
+        <div className="flex flex-col items-center gap-7 p-7 sm:flex-row sm:p-8">
+          <ProgressRing
+            value={health}
+            size={132}
+            label="trust score"
+            colour="var(--color-signal)"
+          />
+
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="measure-wide text-[16px] leading-relaxed">{result.narrative}</p>
+
+            <div className="mt-5 flex flex-wrap justify-center gap-6 sm:justify-start">
+              {[
+                { label: "Skills proven", value: `${proven}/6` },
+                { label: "Moments recorded", value: String(result.observations.length) },
+                {
+                  label: "AI judgment",
+                  value: passport.ajq.score === null ? "—" : String(passport.ajq.score),
+                },
+              ].map((s) => (
+                <div key={s.label}>
+                  <p className="numeral text-[22px] font-bold leading-none">{s.value}</p>
+                  <p className="mt-1 text-[11.5px] text-dim">{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <p className="mt-6 max-w-3xl border-t border-edge-soft pt-5 text-[15px] leading-relaxed text-bright">
-          {result.narrative}
-        </p>
-
         {result.flags.length > 0 && (
-          <ul className="mt-4 space-y-1.5">
+          <ul className="space-y-1.5 border-t border-edge-soft bg-caution/[0.05] px-7 py-4">
             {result.flags.map((f) => (
               <li key={f} className="flex gap-2 text-[13px] leading-relaxed text-caution">
-                <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-caution" />
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-caution" />
                 {f}
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.55fr_1fr]">
-        <div className="space-y-6">
-          {/* Proof graph ------------------------------------------------- */}
-          <Panel
-            title="Where your scores come from"
-            note="Click anything. Every number opens up into the exact moments behind it."
-          >
-            <ProofGraph
-              trustHealth={live}
-              dimensions={result.profile.dimensions}
-              facets={result.profile.ajq.facets}
+      {/* Six skills ------------------------------------------------------- */}
+      <section className="mt-10">
+        <h2 className="title">Your six skills</h2>
+        <p className="measure-wide mt-1.5 text-[14px] text-muted">
+          Every score comes from recorded moments. Open any card to read them.
+        </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {result.profile.dimensions.map((d, i) => (
+            <SkillCard
+              key={d.dimension}
+              score={d}
+              verifiedAt={passport.issuedAt}
               observations={result.observations}
-              observationCount={result.observations.length}
+              index={i}
             />
-          </Panel>
+          ))}
+        </div>
+      </section>
 
-          {/* Calibration ------------------------------------------------- */}
+      <div className="mt-10 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-6">
+          {/* Trust quiz -------------------------------------------------- */}
           {result.calibration && result.calibration.answered > 0 && (
-            <Panel title="Your trust quiz">
-              <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
+            <Card className="p-6">
+              <h2 className="title">Your trust quiz</h2>
+              <p className="mt-1.5 text-[13.5px] text-muted">
+                Did your confidence match what each answer actually deserved?
+              </p>
+
+              <div className="mt-5 grid gap-6 sm:grid-cols-[auto_1fr]">
                 <CalibrationPlot result={result.calibration} />
                 <div>
                   <dl className="grid grid-cols-2 gap-4">
-                    <Stat
-                      label="Labels correct"
-                      value={`${Math.round(result.calibration.accuracy * 100)}%`}
-                    />
-                    <Stat
-                      label="Mean trust error"
-                      value={`${result.calibration.calibrationError}`}
-                    />
-                    <Stat
-                      label="Bias"
-                      value={`${result.calibration.bias > 0 ? "+" : ""}${result.calibration.bias}`}
-                    />
-                    <Stat
-                      label="Unsafe outputs trusted"
-                      value={String(result.calibration.dangerousMisses)}
-                    />
+                    {[
+                      {
+                        label: "Labels right",
+                        value: `${Math.round(result.calibration.accuracy * 100)}%`,
+                      },
+                      { label: "Average error", value: String(result.calibration.calibrationError) },
+                      {
+                        label: "Bias",
+                        value: `${result.calibration.bias > 0 ? "+" : ""}${result.calibration.bias}`,
+                      },
+                      {
+                        label: "Unsafe trusted",
+                        value: String(result.calibration.dangerousMisses),
+                      },
+                    ].map((s) => (
+                      <div key={s.label}>
+                        <dt className="text-[11px] text-dim">{s.label}</dt>
+                        <dd className="numeral mt-0.5 text-[20px] font-bold">{s.value}</dd>
+                      </div>
+                    ))}
                   </dl>
+
                   <p className="mt-4 text-[12.5px] leading-relaxed text-muted">
                     {result.calibration.bias > 12
-                      ? "You trust AI output more than the evidence warrants. That is the failure mode that ships bugs quickly and confidently."
+                      ? "You trust AI more than the evidence justifies. That is the habit that ships bugs quickly and confidently."
                       : result.calibration.bias < -12
-                        ? "You under-trust sound work. Safer than the alternative, but it costs you the speed the tool exists to give you."
-                        : "Your confidence tracked what each output deserved, which is the whole point of the exercise."}
+                        ? "You under-trust good work. Safer than the opposite, but it costs you the speed the tool exists for."
+                        : "Your confidence tracked reality. That is exactly the point of the exercise."}
                   </p>
+
                   {result.calibration.dangerousMisses > 0 && (
-                    <p className="mt-3 rounded-lg border border-alert/30 bg-alert/5 px-3 py-2.5 text-[12.5px] leading-relaxed text-alert">
-                      You would have acted on {result.calibration.dangerousMisses}{" "}
-                      {result.calibration.dangerousMisses === 1 ? "output" : "outputs"} that
-                      cause real damage. This is weighted more heavily than any other error
-                      in the set.
+                    <p className="mt-3 rounded-xl border border-alert/30 bg-alert/5 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-alert">
+                      You would have acted on {result.calibration.dangerousMisses} answer
+                      {result.calibration.dangerousMisses === 1 ? "" : "s"} that cause real
+                      damage. This counts more than any other mistake in the set.
                     </p>
                   )}
                 </div>
               </div>
 
               <details className="mt-5 border-t border-edge-soft pt-4">
-                <summary className="cursor-pointer text-[13px] text-signal">
-                  Show every item and what it actually was
+                <summary className="cursor-pointer text-[13px] font-medium text-signal">
+                  Show every question and what it really was
                 </summary>
                 <ul className="mt-3 space-y-3">
                   {result.calibration.outcomes.map((o, i) => (
@@ -240,10 +283,10 @@ export default function PassportPage() {
                           {String(i + 1).padStart(2, "0")}
                         </span>
                         <span className={o.labelCorrect ? "text-proof" : "text-caution"}>
-                          {o.labelCorrect ? "labelled correctly" : `actually ${o.truth}`}
+                          {o.labelCorrect ? "you got it right" : `actually ${o.truth}`}
                         </span>
                         <span className="text-dim">
-                          you trusted {o.trust}, warranted {o.idealTrust}
+                          you trusted {o.trust}, it deserved {o.idealTrust}
                         </span>
                       </div>
                       <p className="mt-1 text-muted">{o.why}</p>
@@ -251,17 +294,26 @@ export default function PassportPage() {
                   ))}
                 </ul>
               </details>
-            </Panel>
+            </Card>
           )}
 
           {/* Coaching ---------------------------------------------------- */}
-          <Panel
-            title="How to get better"
-            note="Everyone gets this, whatever the company decides."
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="p-6">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-wash text-signal">
+                <Lightbulb size={17} aria-hidden="true" />
+              </span>
               <div>
-                <h3 className="text-[13px] font-semibold text-proof">Strengths</h3>
+                <h2 className="title">How to get better</h2>
+                <p className="text-[12.5px] text-dim">
+                  Everyone gets this, whatever the company decides.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[12.5px] font-semibold text-proof">What went well</p>
                 <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-muted">
                   {result.strengths.map((s) => (
                     <li key={s}>{s}</li>
@@ -269,7 +321,7 @@ export default function PassportPage() {
                 </ul>
               </div>
               <div>
-                <h3 className="text-[13px] font-semibold text-caution">Gaps</h3>
+                <p className="text-[12.5px] font-semibold text-caution">What to work on</p>
                 <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-muted">
                   {result.gaps.map((g) => (
                     <li key={g}>{g}</li>
@@ -281,87 +333,92 @@ export default function PassportPage() {
             <ol className="mt-6 space-y-4 border-t border-edge-soft pt-5">
               {result.coaching.map((c, i) => (
                 <li key={c.title} className="flex gap-3">
-                  <span className="numeral mt-0.5 text-[12px] text-signal">
+                  <span className="numeral mt-0.5 shrink-0 text-[12px] font-bold text-signal">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
-                    <h3 className="text-[14.5px] font-medium">{c.title}</h3>
+                    <h3 className="text-[14.5px] font-semibold">{c.title}</h3>
                     <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{c.action}</p>
                     <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{c.why}</p>
                   </div>
                 </li>
               ))}
             </ol>
-          </Panel>
+          </Card>
         </div>
 
-        {/* Sidebar ------------------------------------------------------- */}
+        {/* Sidebar -------------------------------------------------------- */}
         <div className="space-y-6">
-          <Panel
-            title="AI judgment, by facet"
-            note="A single number hides the lopsided cases, which are the interesting ones."
-          >
-            <AjqRadar facets={result.profile.ajq.facets} />
-          </Panel>
+          <Card className="p-6">
+            <h2 className="title">AI judgment, in parts</h2>
+            <p className="mt-1 text-[12.5px] text-dim">
+              One number hides the lopsided cases, which are the interesting ones.
+            </p>
+            <div className="mt-4">
+              <AjqRadar facets={result.profile.ajq.facets} />
+            </div>
+          </Card>
 
-          <Panel title="How fresh this is">
-            <p className="text-[12.5px] leading-relaxed text-muted">
-              Proof fades. Each skill fades at its own speed, because how you handled AI
-              tools eighteen months ago says very little about today.
+          <Card className="p-6">
+            <h2 className="title">How fresh this is</h2>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-dim">
+              Proof fades. Each skill fades at its own speed.
             </p>
             <ul className="mt-4 space-y-3">
               {passport.claims.map((c) => {
                 const f = freshnessFor(c.dimension, c.verifiedAt);
                 return (
                   <li key={c.dimension}>
-                    <div className="flex items-baseline gap-2 text-[12.5px]">
-                      <span>{DIMENSION_LABEL[c.dimension]}</span>
+                    <div className="flex items-center gap-2 text-[12.5px]">
+                      <SkillIcon dimension={c.dimension} size={11} tile={false} />
+                      <span className="truncate">{DIMENSION_LABEL[c.dimension]}</span>
                       <span className="numeral ml-auto text-dim">
                         {Math.round(f * 100)}%
                       </span>
                     </div>
-                    <div className={`meter mt-1 ${TONE_CLASS[freshnessTone(f)]}`}>
+                    <div className={cn("meter mt-1 h-1", TONE_CLASS[freshnessTone(f)])}>
                       <span style={{ width: `${f * 100}%` }} />
                     </div>
-                    <p className="mt-1 text-[10.5px] text-dim">
-                      revalidate by {c.revalidateBy.slice(0, 10)}
-                    </p>
                   </li>
                 );
               })}
             </ul>
-          </Panel>
+          </Card>
 
           {unproven.length > 0 && (
-            <Panel title="Not shown yet">
-              <p className="text-[12.5px] leading-relaxed text-muted">
-                Nothing in this session showed these, so we do not give them a number. Each
-                one is a twenty-minute exercise away from being on your record.
+            <Card className="p-6">
+              <h2 className="title">Not shown yet</h2>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+                Nothing in this test showed these, so we give no number. Each is a
+                twenty-minute exercise away.
               </p>
               <ul className="mt-3 space-y-2">
                 {unproven.map((c) => (
-                  <li key={c.dimension} className="rounded-lg border border-edge-soft p-3">
-                    <p className="text-[13px]">{DIMENSION_LABEL[c.dimension]}</p>
-                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-dim">
-                      {DIMENSION_BLURB[c.dimension]}
-                    </p>
+                  <li
+                    key={c.dimension}
+                    className="flex items-center gap-2.5 rounded-xl border border-edge-soft p-3"
+                  >
+                    <SkillIcon dimension={c.dimension} size={13} />
+                    <span className="text-[13px]">{DIMENSION_LABEL[c.dimension]}</span>
                   </li>
                 ))}
               </ul>
-              <Link href="/employer" className="btn btn-ghost mt-4">
-                Build the missing evidence
-              </Link>
-            </Panel>
+            </Card>
           )}
 
-          <Panel title="Share your results">
-            <DisclosureControl
-              passport={passport}
-              onPresent={(p, d) => {
-                setPresentation(p);
-                setDisclosed(d);
-              }}
-            />
+          {/* Share ------------------------------------------------------- */}
+          <Card raised className="p-6">
+            <h2 className="title">Share your results</h2>
+            <div className="mt-4">
+              <DisclosureControl
+                passport={passport}
+                onPresent={(p, d) => {
+                  setPresentation(p);
+                  setDisclosed(d);
+                  toast.show("Shareable version ready");
+                }}
+              />
+            </div>
 
             {qr && (
               <div className="mt-5 border-t border-edge-soft pt-5">
@@ -369,27 +426,30 @@ export default function PassportPage() {
                 <img
                   src={qr}
                   alt="QR code linking to the PROOFOS checker"
-                  className="mx-auto w-40 rounded-lg border border-edge bg-white p-1"
+                  className="mx-auto w-36 rounded-xl border border-edge bg-white p-1.5"
                 />
                 <p className="mt-2 text-center text-[11px] text-dim">
-                  Scan for the verifier. The presentation itself travels as a file.
+                  Scan to open the checker
                 </p>
               </div>
             )}
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                className="btn btn-ghost"
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Copy size={14} />}
                 onClick={async () => {
                   await navigator.clipboard.writeText(presentation ?? credential.sdJwt);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
+                  toast.show("Copied to your clipboard");
                 }}
               >
-                {copied ? "Copied" : "Copy presentation"}
-              </button>
-              <button
-                className="btn btn-ghost"
+                Copy
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Download size={14} />}
                 onClick={() => {
                   const blob = new Blob([presentation ?? credential.sdJwt], {
                     type: "application/vc+sd-jwt",
@@ -400,26 +460,36 @@ export default function PassportPage() {
                   a.download = `${passport.id}.sd-jwt`;
                   a.click();
                   URL.revokeObjectURL(url);
+                  toast.show("Downloaded");
                 }}
               >
                 Download
-              </button>
-              <Link href="/verify" className="btn btn-quiet">
-                Check it →
+              </Button>
+              <Link
+                href="/verify"
+                className={buttonStyles({ variant: "ghost", size: "sm" })}
+              >
+                <ScanLine size={14} />
+                Check it
               </Link>
             </div>
 
             <dl className="mt-5 space-y-1.5 border-t border-edge-soft pt-4 text-[11.5px] text-dim">
-              <Row label="Credential" value={passport.id} />
-              <Row label="Issued" value={passport.issuedAt.slice(0, 10)} />
-              <Row label="Signature" value="Ed25519 · vc+sd-jwt" />
-              <Row label="Disclosed" value={`${disclosed.length}/${passport.claims.length}`} />
-              <Row label="Evidence root" value={passport.evidenceRoot.slice(0, 16)} />
-              <Row label="Status index" value={String(passport.statusIndex)} />
+              {[
+                ["Shared", `${disclosed.length}/${passport.claims.length} skills`],
+                ["Issued", passport.issuedAt.slice(0, 10)],
+                ["Signature", "Ed25519"],
+                ["ID", passport.id],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <dt>{k}</dt>
+                  <dd className="truncate font-mono">{v}</dd>
+                </div>
+              ))}
             </dl>
 
             <button
-              className="btn btn-quiet mt-4 px-0 text-[12px] text-alert"
+              className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium text-alert transition-opacity hover:opacity-75"
               onClick={async () => {
                 await fetch("/api/revoke", {
                   method: "POST",
@@ -430,82 +500,24 @@ export default function PassportPage() {
                   }),
                 });
                 setRevoked(!revoked);
+                toast.show(revoked ? "Results restored" : "Results withdrawn");
               }}
             >
-              {revoked ? "Put these results back" : "Withdraw these results"}
+              {revoked ? <Undo2 size={13} /> : <CircleCheck size={13} />}
+              {revoked ? "Put these back" : "Withdraw these results"}
             </button>
-            <p className="mt-1 text-[11px] leading-relaxed text-dim">
-              Withdrawing does not delete copies people already have. It flips one bit on a
-              public list, so anyone who checks is told these results were pulled.
+            <p className="mt-1.5 text-[11px] leading-relaxed text-dim">
+              Withdrawing does not delete copies people already have. Anyone who checks is
+              told they were pulled.
             </p>
-          </Panel>
+          </Card>
         </div>
       </div>
     </div>
   );
 }
 
-function Headline({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: number | null;
-  hint: string;
-}) {
-  return (
-    <div>
-      <div className="eyebrow">{label}</div>
-      <div className="numeral mt-1 text-[52px] leading-none text-bright">
-        {value ?? "—"}
-      </div>
-      <div className="mt-1 text-[11.5px] text-dim">{hint}</div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[11px] leading-snug text-dim">{label}</dt>
-      <dd className="numeral mt-0.5 text-[22px] text-bright">{value}</dd>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt>{label}</dt>
-      <dd className="truncate font-mono">{value}</dd>
-    </div>
-  );
-}
-
-function Panel({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="panel p-5 sm:p-6">
-      <span className="eyebrow">{title}</span>
-      {note && <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{note}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto max-w-3xl px-5 py-16">{children}</div>;
-}
-
-/** Kept in this browser only, so the employer console has something to rank. */
+/** Kept in this browser only, so the employer view has something to show. */
 function rememberLocally(passport: Passport) {
   try {
     const pool = JSON.parse(localStorage.getItem("proofos.pool") ?? "[]") as Passport[];
