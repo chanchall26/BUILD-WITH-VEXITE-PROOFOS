@@ -480,5 +480,7 @@ export interface GeminiCall {
   ms: number;
   ok: boolean;
   fixture: boolean;
+  /** Which key in the pool served it, 1-based. Never the key itself. */
+  key?: number;
   note?: string;
 }

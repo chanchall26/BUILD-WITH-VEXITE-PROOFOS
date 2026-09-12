@@ -41,8 +41,35 @@ export const EMBED_DIM = 768;
 /** Fixed seed: the same session must evaluate the same way twice. */
 export const EVAL_SEED = 20260912;
 
+/**
+ * Every configured API key, in order.
+ *
+ * Free-tier keys are rate limited per key, not per project, so a demo that
+ * needs more than a couple of calls a minute can spread the load across
+ * several. `GEMINI_API_KEYS` takes a comma-separated list; `GEMINI_API_KEY`
+ * stays supported for the single-key case.
+ */
+export function apiKeys(): string[] {
+  const raw = [
+    process.env.GEMINI_API_KEYS,
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_API_KEY,
+  ]
+    .filter(Boolean)
+    .join(",");
+
+  return [
+    ...new Set(
+      raw
+        .split(/[,\s]+/)
+        .map((k) => k.trim())
+        .filter((k) => k.length > 10),
+    ),
+  ];
+}
+
 export function apiKey(): string | undefined {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || undefined;
+  return apiKeys()[0];
 }
 
 /**
@@ -51,7 +78,7 @@ export function apiKey(): string | undefined {
  * hand to a stranger on an unknown network.
  */
 export function isDemoMode(): boolean {
-  return !apiKey();
+  return apiKeys().length === 0;
 }
 
 export function secret(): string {

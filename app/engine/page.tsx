@@ -87,24 +87,24 @@ const REFUSED = [
   "Whether to hire anyone. The system produces coverage and evidence, and no decision at all.",
 ];
 
-interface Sidelined {
-  model: string;
-  retryInSeconds: number;
+interface Pool {
+  keys: number;
+  sidelined: { key: number; model: string; retryInSeconds: number }[];
 }
 
 export default function EnginePage() {
   const [calls, setCalls] = useState<GeminiCall[]>([]);
   const [demoMode, setDemoMode] = useState(false);
-  const [sidelined, setSidelined] = useState<Sidelined[]>([]);
+  const [pool, setPool] = useState<Pool>({ keys: 0, sidelined: [] });
 
   useEffect(() => {
     const load = () =>
       fetch("/api/calls")
         .then((r) => r.json())
-        .then((d: { calls: GeminiCall[]; demoMode: boolean; sidelined?: Sidelined[] }) => {
+        .then((d: { calls: GeminiCall[]; demoMode: boolean; pool?: Pool }) => {
           setCalls(d.calls ?? []);
           setDemoMode(d.demoMode);
-          setSidelined(d.sidelined ?? []);
+          setPool(d.pool ?? { keys: 0, sidelined: [] });
         })
         .catch(() => {});
     load();
@@ -132,21 +132,49 @@ export default function EnginePage() {
         </p>
       )}
 
-      {sidelined.length > 0 && (
+      {pool.keys > 1 && (
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+          <span className="eyebrow">Key pool</span>
+          {Array.from({ length: pool.keys }, (_, i) => i + 1).map((n) => {
+            const cooling = pool.sidelined.filter((s) => s.key === n);
+            return (
+              <span
+                key={n}
+                className={`chip ${cooling.length ? "border-caution/40 text-caution" : "border-proof/40 text-proof"}`}
+                title={
+                  cooling.length
+                    ? cooling.map((c) => `${c.model} for ${c.retryInSeconds}s`).join(", ")
+                    : "available"
+                }
+              >
+                key {n}
+                {cooling.length ? ` · cooling ${Math.max(...cooling.map((c) => c.retryInSeconds))}s` : ""}
+              </span>
+            );
+          })}
+          <span className="text-dim">
+            Gemini rate limits per key, so calls rotate across the pool and a refused key
+            steps aside until its window clears.
+          </span>
+        </div>
+      )}
+
+      {pool.keys === 1 && pool.sidelined.length > 0 && (
         <div className="mt-6 rounded-lg border border-caution/40 bg-caution/5 px-4 py-3 text-[13px] leading-relaxed text-caution">
           <p>
-            This key has no quota for{" "}
-            {sidelined.map((s) => (
-              <code key={s.model} className="font-mono">
-                {s.model}{" "}
+            The configured key has no quota right now for{" "}
+            {[...new Set(pool.sidelined.map((s) => s.model))].map((m) => (
+              <code key={m} className="font-mono">
+                {m}{" "}
               </code>
             ))}
-            right now, so those tiers are skipped rather than retried on every request.
+            so those tiers are skipped rather than retried on every request.
           </p>
           <p className="mt-1 text-dim">
-            Work continues on the next tier down, and the sideline lifts automatically in{" "}
-            {Math.max(...sidelined.map((s) => s.retryInSeconds))} seconds. Free-tier keys do
-            not include the pro tier, so this is expected rather than broken.
+            Work continues on the next tier down, and the sideline lifts in{" "}
+            {Math.max(...pool.sidelined.map((s) => s.retryInSeconds))} seconds. Configure
+            several keys in <code className="font-mono">GEMINI_API_KEYS</code> for more
+            headroom.
           </p>
         </div>
       )}

@@ -8,7 +8,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { EMBED_DIM, MODELS, apiKey, isDemoMode } from "./config";
+import { EMBED_DIM, MODELS, apiKey, apiKeys, isDemoMode } from "./config";
 import type { GeminiCall } from "./domain";
 import { shortId } from "./utils";
 
@@ -30,32 +30,46 @@ export function recentCalls(): GeminiCall[] {
   return [...log];
 }
 
-// ---------------------------------------------------------------- client
-
-let cached: GoogleGenAI | null = null;
-
-export function client(): GoogleGenAI {
-  const key = apiKey();
-  if (!key) throw new Error("GEMINI_API_KEY is not configured");
-  if (!cached) cached = new GoogleGenAI({ apiKey: key });
-  return cached;
-}
-
-// ------------------------------------------------------------ circuit breaker
+// ---------------------------------------------------------------- key pool
 
 /**
- * Not every key can reach every model. A free-tier key has no quota for the
- * pro tier at all, so without this the product spends ten seconds failing on
- * the same model before every single fallback, on every request.
+ * Gemini rate limits per key, not per project, so several free-tier keys give
+ * a demo real headroom. Keys are held in a pool, rotated between calls so no
+ * one key absorbs the whole load, and individually sidelined when refused.
  *
- * A model that answers 429 or 403 is skipped for a few minutes and the next
- * tier is used directly. Transient errors are not recorded, so a one-off
- * network blip does not sideline a model that works.
+ * Two kinds of refusal, two cooldowns. A 429 clears in about a minute. A 403
+ * or 404 means this key simply has no access to that model — a free-tier key
+ * cannot reach the pro tier at all — and there is no point retrying it soon.
+ * Anything else is treated as transient and sidelines nothing, so one network
+ * blip never takes a working key out of rotation.
+ *
+ * The key itself is never logged. Only its position in the pool.
  */
-/** A rate limit clears in about a minute; a missing entitlement does not. */
+
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
 const ENTITLEMENT_COOLDOWN_MS = 5 * 60_000;
-const unavailable = new Map<string, number>();
+/** Worst-case round trips before giving up and serving the fixture. */
+const MAX_ATTEMPTS = 4;
+
+const clients = new Map<string, GoogleGenAI>();
+const sidelined = new Map<string, number>();
+let cursor = 0;
+
+function clientFor(key: string): GoogleGenAI {
+  let existing = clients.get(key);
+  if (!existing) {
+    existing = new GoogleGenAI({ apiKey: key });
+    clients.set(key, existing);
+  }
+  return existing;
+}
+
+/** Kept for callers that only need a client and do their own error handling. */
+export function client(): GoogleGenAI {
+  const key = apiKey();
+  if (!key) throw new Error("No Gemini API key is configured");
+  return clientFor(key);
+}
 
 function cooldownFor(err: unknown): number | null {
   const message = err instanceof Error ? err.message : String(err);
@@ -68,29 +82,96 @@ function cooldownFor(err: unknown): number | null {
   return null;
 }
 
-function isUnavailable(model: string): boolean {
-  const until = unavailable.get(model);
+function slot(index: number, model: string): string {
+  return `${index}|${model}`;
+}
+
+function isSidelined(index: number, model: string): boolean {
+  const until = sidelined.get(slot(index, model));
   if (until === undefined) return false;
   if (Date.now() >= until) {
-    unavailable.delete(model);
+    sidelined.delete(slot(index, model));
     return false;
   }
   return true;
 }
 
-function markUnavailable(model: string, err: unknown): void {
-  const cooldown = cooldownFor(err);
-  if (cooldown === null) return; // a transient blip must not sideline a working model
-  unavailable.set(model, Date.now() + cooldown);
+export interface Attempt {
+  key: string;
+  /** 1-based, for logs and the engine page. */
+  number: number;
 }
 
-/** Which models this key has been refused by, for the engine page. */
-export function sidelinedModels(): { model: string; retryInSeconds: number }[] {
+/**
+ * Which keys are worth trying for this model, best first.
+ *
+ * Sidelined keys are skipped. If every key is sidelined the full pool is
+ * returned anyway, because a cooldown should never be the reason nothing is
+ * attempted at all.
+ */
+function attemptsFor(model: string): Attempt[] {
+  const all = apiKeys().map((key, i) => ({ key, number: i + 1, index: i }));
+  if (all.length === 0) return [];
+  const free = all.filter((a) => !isSidelined(a.index, model));
+  const pool = free.length ? free : all;
+  const start = cursor++ % pool.length;
+  return [...pool.slice(start), ...pool.slice(0, start)].map(({ key, number }) => ({
+    key,
+    number,
+  }));
+}
+
+function markRefused(attempt: Attempt, model: string, err: unknown): void {
+  const cooldown = cooldownFor(err);
+  if (cooldown === null) return;
+  sidelined.set(slot(attempt.number - 1, model), Date.now() + cooldown);
+}
+
+/**
+ * Runs something against the key pool, moving to the next key when one is
+ * refused. Used by the paths that are not a plain structured call: streaming,
+ * tool loops, embeddings and speech.
+ */
+async function withKeys<T>(
+  model: string,
+  run: (client: GoogleGenAI, attempt: Attempt) => Promise<T>,
+): Promise<{ value: T; attempt: Attempt }> {
+  const attempts = attemptsFor(model).slice(0, MAX_ATTEMPTS);
+  if (attempts.length === 0) throw new Error("No Gemini API key is configured");
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      return { value: await run(clientFor(attempt.key), attempt), attempt };
+    } catch (err) {
+      lastError = err;
+      markRefused(attempt, model, err);
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Every configured key refused the request");
+}
+
+export interface PoolStatus {
+  keys: number;
+  sidelined: { key: number; model: string; retryInSeconds: number }[];
+}
+
+/** What the engine page shows. Positions only, never key material. */
+export function keyPoolStatus(): PoolStatus {
   const now = Date.now();
-  return Array.from(unavailable, ([model, until]) => ({
-    model,
-    retryInSeconds: Math.max(0, Math.round((until - now) / 1000)),
-  })).filter((m) => m.retryInSeconds > 0);
+  return {
+    keys: apiKeys().length,
+    sidelined: Array.from(sidelined, ([id, until]) => {
+      const [index, model] = id.split("|");
+      return {
+        key: Number(index) + 1,
+        model,
+        retryInSeconds: Math.max(0, Math.round((until - now) / 1000)),
+      };
+    }).filter((s) => s.retryInSeconds > 0),
+  };
 }
 
 // ---------------------------------------------------------------- shapes
@@ -214,43 +295,55 @@ export async function callGemini<T>(o: CallOpts<T>): Promise<CallResult<T>> {
         : [o.model, MODELS.swift],
     ),
   ];
-  // Skip tiers this key has already been refused by, rather than paying the
-  // round trip to be refused again. If every tier is sidelined, try them all
-  // anyway: a cooldown should never be the reason nothing is attempted.
-  const reachable = declared.filter((m) => !isUnavailable(m));
-  const tiers = reachable.length ? reachable : declared;
+  // Each model tier is tried across every key that is not currently sidelined
+  // for it, then the next tier down. Bounded, so a fully rate-limited pool
+  // reaches the fixture quickly instead of grinding through every combination.
   let lastError: unknown;
+  let spent = 0;
 
-  for (const model of tiers) {
-    const t0 = Date.now();
-    try {
-      const interaction: any = await (client().interactions as any).create(
-        buildParams(o, model),
-      );
-      const raw: string = interaction?.output_text ?? "";
-      const data = (o.schema ? JSON.parse(stripFence(raw)) : raw) as T;
-      const ms = Date.now() - t0;
-      record({ label: o.label, model, capability: o.capability, ms, ok: true, fixture: false });
-      return {
-        data,
-        source: "gemini",
-        sources: extractSources(interaction),
-        interactionId: interaction?.id,
-        model,
-        ms,
-      };
-    } catch (err) {
-      lastError = err;
-      markUnavailable(model, err);
-      record({
-        label: o.label,
-        model,
-        capability: o.capability,
-        ms: Date.now() - t0,
-        ok: false,
-        fixture: false,
-        note: err instanceof Error ? err.message.slice(0, 160) : "failed",
-      });
+  outer: for (const model of declared) {
+    for (const attempt of attemptsFor(model)) {
+      if (spent >= MAX_ATTEMPTS) break outer;
+      spent++;
+      const t0 = Date.now();
+      try {
+        const interaction: any = await (clientFor(attempt.key).interactions as any).create(
+          buildParams(o, model),
+        );
+        const raw: string = interaction?.output_text ?? "";
+        const data = (o.schema ? JSON.parse(stripFence(raw)) : raw) as T;
+        const ms = Date.now() - t0;
+        record({
+          label: o.label,
+          model,
+          capability: o.capability,
+          ms,
+          ok: true,
+          fixture: false,
+          key: attempt.number,
+        });
+        return {
+          data,
+          source: "gemini",
+          sources: extractSources(interaction),
+          interactionId: interaction?.id,
+          model,
+          ms,
+        };
+      } catch (err) {
+        lastError = err;
+        markRefused(attempt, model, err);
+        record({
+          label: o.label,
+          model,
+          capability: o.capability,
+          ms: Date.now() - t0,
+          ok: false,
+          fixture: false,
+          key: attempt.number,
+          note: err instanceof Error ? err.message.slice(0, 160) : "failed",
+        });
+      }
     }
   }
 
@@ -289,7 +382,11 @@ export async function streamGemini(opts: {
   if (opts.tools?.length) params.tools = opts.tools;
 
   const t0 = Date.now();
-  const stream: any = await (client().interactions as any).create(params);
+  // Opening the stream is where a refusal surfaces, so key rotation happens
+  // here rather than mid-read.
+  const { value: stream, attempt } = await withKeys<any>(opts.model, (c) =>
+    (c.interactions as any).create(params),
+  );
   const encoder = new TextEncoder();
 
   return new ReadableStream<Uint8Array>({
@@ -307,9 +404,10 @@ export async function streamGemini(opts: {
           ms: Date.now() - t0,
           ok: true,
           fixture: false,
+          key: attempt.number,
         });
       } catch (err) {
-        markUnavailable(opts.model, err);
+        markRefused(attempt, opts.model, err);
         record({
           label: opts.label,
           model: opts.model,
@@ -317,6 +415,7 @@ export async function streamGemini(opts: {
           ms: Date.now() - t0,
           ok: false,
           fixture: false,
+          key: attempt.number,
           note: err instanceof Error ? err.message.slice(0, 160) : "stream failed",
         });
         controller.enqueue(
@@ -362,41 +461,39 @@ export async function callWithTools(opts: {
     parameters: t.parameters,
   }));
 
-  const made: ToolCall[] = [];
   const t0 = Date.now();
 
-  let params: Record<string, any> = {
-    model: opts.model,
-    input: opts.input,
-    system_instruction: opts.system,
-    tools: declarations,
-  };
-  if (opts.thinking) params.generation_config = { thinking_level: opts.thinking };
+  /**
+   * One full tool loop against a single key. An interaction id belongs to the
+   * key that created it, so a retry has to start the conversation over on the
+   * new key rather than continue the old one.
+   */
+  const runLoop = async (c: GoogleGenAI) => {
+    const made: ToolCall[] = [];
+    let params: Record<string, any> = {
+      model: opts.model,
+      input: opts.input,
+      system_instruction: opts.system,
+      tools: declarations,
+    };
+    if (opts.thinking) params.generation_config = { thinking_level: opts.thinking };
 
-  try {
     for (let round = 0; round < (opts.maxRounds ?? 3); round++) {
-      const interaction: any = await (client().interactions as any).create(params);
-      const steps: any[] = interaction?.steps ?? [];
-      const calls = steps.filter((s) => s?.type === "function_call");
+      const interaction: any = await (c.interactions as any).create(params);
+      const calls = (interaction?.steps ?? []).filter(
+        (s: any) => s?.type === "function_call",
+      );
 
       if (calls.length === 0) {
-        record({
-          label: opts.label,
-          model: opts.model,
-          capability: "Function calling",
-          ms: Date.now() - t0,
-          ok: true,
-          fixture: false,
-          note: made.length ? `resolved ${made.length} tool call(s)` : "no tools needed",
-        });
         return {
           text: interaction?.output_text ?? "",
           calls: made,
-          interactionId: interaction?.id,
+          interactionId: interaction?.id as string | undefined,
+          note: made.length ? `resolved ${made.length} tool call(s)` : "no tools needed",
         };
       }
 
-      const results = calls.map((call) => {
+      const results = calls.map((call: any) => {
         const args =
           typeof call.arguments === "string"
             ? safeParse(call.arguments)
@@ -422,22 +519,31 @@ export async function callWithTools(opts: {
     }
 
     // Running out of rounds having resolved tools is the normal outcome for a
-    // consult turn, which is called with maxRounds of one. It is only a
-    // failure when the loop ended with nothing to show for it.
+    // consult turn, which runs with a round limit of one.
+    return {
+      text: "",
+      calls: made,
+      interactionId: undefined,
+      note: made.length
+        ? `resolved ${made.length} tool call${made.length === 1 ? "" : "s"}`
+        : "tool loop ended without a reply",
+    };
+  };
+
+  try {
+    const { value, attempt } = await withKeys(opts.model, runLoop);
     record({
       label: opts.label,
       model: opts.model,
       capability: "Function calling",
       ms: Date.now() - t0,
-      ok: made.length > 0,
+      ok: value.calls.length > 0 || value.text.length > 0,
       fixture: false,
-      note: made.length
-        ? `resolved ${made.length} tool call${made.length === 1 ? "" : "s"}`
-        : "tool loop ended without a reply",
+      key: attempt.number,
+      note: value.note,
     });
-    return { text: "", calls: made };
+    return { text: value.text, calls: value.calls, interactionId: value.interactionId };
   } catch (err) {
-    markUnavailable(opts.model, err);
     record({
       label: opts.label,
       model: opts.model,
@@ -485,11 +591,13 @@ export async function embed(texts: string[]): Promise<{
 
   const t0 = Date.now();
   try {
-    const res = await client().models.embedContent({
-      model: MODELS.embedding,
-      contents: texts,
-      config: { outputDimensionality: EMBED_DIM },
-    });
+    const { value: res, attempt } = await withKeys(MODELS.embedding, (c) =>
+      c.models.embedContent({
+        model: MODELS.embedding,
+        contents: texts,
+        config: { outputDimensionality: EMBED_DIM },
+      }),
+    );
     const vectors = (res.embeddings ?? []).map((e) => e.values ?? []);
     record({
       label: "embed evidence",
@@ -498,6 +606,7 @@ export async function embed(texts: string[]): Promise<{
       ms: Date.now() - t0,
       ok: true,
       fixture: false,
+      key: attempt.number,
     });
     if (vectors.length === texts.length) return { vectors, source: "gemini" };
   } catch (err) {
@@ -535,17 +644,20 @@ export async function speak(text: string): Promise<string | null> {
   if (isDemoMode() || !text.trim()) return null;
   const t0 = Date.now();
   try {
-    const interaction: any = await (client().interactions as any).create({
-      model: MODELS.speech,
-      input: text,
-      response_modalities: ["audio"],
-      generation_config: {
-        speech_config: {
-          voice_config: { prebuilt_voice_config: { voice_name: "Charon" } },
+    const { value: interaction, attempt } = await withKeys<any>(MODELS.speech, (c) =>
+      (c.interactions as any).create({
+        model: MODELS.speech,
+        input: text,
+        response_modalities: ["audio"],
+        generation_config: {
+          speech_config: {
+            voice_config: { prebuilt_voice_config: { voice_name: "Charon" } },
+          },
         },
-      },
-    });
+      }),
+    );
     record({
+      key: attempt.number,
       label: "speak as counterpart",
       model: MODELS.speech,
       capability: "Text-to-speech",

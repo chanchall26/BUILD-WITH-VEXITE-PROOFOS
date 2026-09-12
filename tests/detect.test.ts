@@ -10,6 +10,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { normaliseChallenge, nextBeat, playedBeats, type RawChallenge } from "../lib/challenge.ts";
+import { apiKeys, isDemoMode } from "../lib/config.ts";
 import { deterministicObservations, integrityFlags } from "../lib/detect.ts";
 import type { DefenceAnswer, SessionTelemetry, Turn } from "../lib/domain.ts";
 import { FIXTURE_CALIBRATION, FIXTURE_CHALLENGE, FIXTURE_COUNTERPART } from "../lib/fixtures.ts";
