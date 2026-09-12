@@ -26,22 +26,23 @@ npm install && npm run dev      # → http://localhost:3000  (works with NO API 
 ## 📑 Table of contents
 
 1. [What is PROOFOS, in one minute](#-what-is-proofos-in-one-minute)
-2. [The problem we are solving](#-the-problem-we-are-solving)
-3. [How it works — the full flow](#-how-it-works--the-full-flow)
-4. [Every feature, in easy words](#-every-feature-in-easy-words)
-5. [The two new ideas](#-the-two-new-ideas)
-6. [The four rules we never break](#-the-four-rules-we-never-break)
-7. [How a score is actually calculated](#-how-a-score-is-actually-calculated)
-8. [Architecture](#-architecture)
-9. [Tech stack](#-tech-stack)
-10. [How Gemini is used](#-how-gemini-is-used)
-11. [Privacy, security and the law](#-privacy-security-and-the-law)
-12. [Market and industry impact](#-market-and-industry-impact)
-13. [Innovation and uniqueness](#-innovation-and-uniqueness)
-14. [Running it yourself](#-running-it-yourself)
-15. [Testing](#-testing)
-16. [What is finished and what is not](#-what-is-finished-and-what-is-not)
-17. [Provenance and licence](#-provenance-and-licence)
+2. [Judging criteria — where each one is answered](#-judging-criteria--where-each-one-is-answered)
+3. [The problem we are solving](#-the-problem-we-are-solving)
+4. [How it works — the full flow](#-how-it-works--the-full-flow)
+5. [Every feature, in easy words](#-every-feature-in-easy-words)
+6. [The two new ideas](#-the-two-new-ideas)
+7. [The four rules we never break](#-the-four-rules-we-never-break)
+8. [How a score is actually calculated](#-how-a-score-is-actually-calculated)
+9. [Architecture](#-architecture)
+10. [Tech stack](#-tech-stack)
+11. [How Gemini is used](#-how-gemini-is-used) · [Why this is the best use of the Gemini API](#-why-this-is-the-best-use-of-the-gemini-api)
+12. [Privacy, security and the law](#-privacy-security-and-the-law)
+13. [Market and industry impact](#-market-and-industry-impact)
+14. [Innovation and uniqueness](#-innovation-and-uniqueness)
+15. [Running it yourself](#-running-it-yourself)
+16. [Testing](#-testing)
+17. [What is finished and what is not](#-what-is-finished-and-what-is-not)
+18. [Provenance and licence](#-provenance-and-licence)
 
 ---
 
@@ -71,7 +72,7 @@ flowchart LR
 | Weight | Criterion | What PROOFOS does about it | Read / try |
 |---|---|---|---|
 | **20%** | 🌍 **Real-world problem & impact** | AI has made CVs, cover letters and take-homes worthless as signals; 1 in 4 candidate profiles is projected to be fake by 2028. PROOFOS replaces *claims* with *recorded evidence*, and measures the one skill hiring now depends on: catching an AI when it's confidently wrong. Built for India DPDP 2023 and the EU AI Act from day one. | [The problem](#-the-problem-we-are-solving) · [Market impact](#-market-and-industry-impact) · [Privacy & law](#-privacy-security-and-the-law) |
-| **20%** | 🤖 **Best use of Google Gemini API** | Twelve Gemini capabilities, each picked for one job and no other: Pro with high thinking designs the test, Flash with function calling *is* the wrong-on-purpose teammate, structured output feeds Zod, Search grounding calibrates to a live role, transcribe + TTS run the spoken defence, embeddings match skills to jobs. Gemini finds and quotes the evidence; **it never decides the score**. Every call is visible live at `/engine`. | [Best use of Gemini](#-why-this-is-the-best-use-of-the-gemini-api) · [Capability table](#-how-gemini-is-used) · try `/engine` |
+| **20%** | 🤖 **Best use of Google Gemini API** | Twelve Gemini capabilities, each picked for one job and no other: Pro designs the test and, with high thinking, extracts the evidence; Flash with function calling *is* the wrong-on-purpose teammate, structured output feeds Zod, Search grounding calibrates to a live role, transcribe + TTS run the spoken defence, embeddings match skills to jobs. Gemini finds and quotes the evidence; **it never decides the score**. Every call is visible live at `/engine`. | [Best use of Gemini](#-why-this-is-the-best-use-of-the-gemini-api) · [Capability table](#-how-gemini-is-used) · try `/engine` |
 | **15%** | 💡 **Innovation & creativity** | Two new ideas: the **AI Judgment Quotient** (six facets — detect, question, verify, direct, correct, decide — scored from what you actually did with a fallible AI) and **trust calibration** (does your confidence match reality?). An AI colleague that is *wrong on purpose*, with the evidence it skipped shown on screen. A passport whose scores **fade as the proof ages**. | [The two new ideas](#-the-two-new-ideas) · [Innovation](#-innovation-and-uniqueness) |
 | **15%** | 🎨 **UI/UX & user experience** | One 16-minute flow with no install and no account. The homepage teaches the product with interactive diagrams — the six-part judgment loop, the "AI read the wrong chart" demo with real mini-charts, a live passport. Focus mode, on-device camera guard with visible counters, light/dark, reduced-motion respected, keyboard and screen-reader labels throughout. | [Every feature](#-every-feature-in-easy-words) · try the [live demo](https://build-with-vexite-proofos.vercel.app) |
 | **10%** | 🚀 **Deployment & accessibility** | Live on Vercel; CI (lint → typecheck → 83 tests → build) on every push; **runs with no API key at all** in fixture mode so anyone can clone and use it in one command; passports verify offline from a QR code; did:web public key published. | [Running it yourself](#-running-it-yourself) · [Testing](#-testing) |
