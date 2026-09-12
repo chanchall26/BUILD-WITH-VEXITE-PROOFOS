@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/evaluate/route.ts": { "maxDuration": 120 },
+    "app/api/challenge/route.ts": { "maxDuration": 90 },
+    "app/api/calibration/route.ts": { "maxDuration": 90 },
+    "app/api/counterpart/route.ts": { "maxDuration": 90 },
+    "app/api/role/route.ts": { "maxDuration": 90 }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), interest-cohort=(), microphone=(self)"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/(.*)",
+      "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }]
+    },
+    {
+      "source": "/api/status/(.*)",
+      "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }]
+    }
+  ]
+}
