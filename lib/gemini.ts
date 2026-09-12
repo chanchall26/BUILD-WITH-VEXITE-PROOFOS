@@ -47,9 +47,25 @@ export function recentCalls(): GeminiCall[] {
  */
 
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
+/** A key that has spent its daily allowance is out for the rest of the hour. */
+const DAILY_QUOTA_COOLDOWN_MS = 60 * 60_000;
 const ENTITLEMENT_COOLDOWN_MS = 5 * 60_000;
 /** Worst-case round trips before giving up and serving the fixture. */
 const MAX_ATTEMPTS = 4;
+/**
+ * Keys tried per model tier before dropping a tier. Each tier has its own
+ * quota, so when one model is busy on every key the fastest route to an
+ * answer is a different model, not a third key on the same one.
+ */
+const KEYS_PER_TIER = 2;
+/** One generation must finish inside this, or the next key gets its turn. */
+const REQUEST_TIMEOUT_MS = 55_000;
+
+/**
+ * Per-request options for the Interactions client. Measured: a refused key
+ * answers in under a second with this, and in eleven seconds without it.
+ */
+const ONE_SHOT = { maxRetries: 0, timeout: REQUEST_TIMEOUT_MS };
 
 const clients = new Map<string, GoogleGenAI>();
 const sidelined = new Map<string, number>();
@@ -58,7 +74,16 @@ let cursor = 0;
 function clientFor(key: string): GoogleGenAI {
   let existing = clients.get(key);
   if (!existing) {
-    existing = new GoogleGenAI({ apiKey: key });
+    // The SDK retries a 429 on its own with exponential backoff, which turned
+    // one refused key into ten to twenty seconds of waiting before the pool
+    // even heard about it. Rotation across keys is our job, so the SDK gets
+    // one attempt and a hard deadline.
+    existing = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: { timeout: REQUEST_TIMEOUT_MS, retryOptions: { attempts: 1 } },
+    });
+    // The Interactions client has a second, separate retry loop that ignores
+    // the options above. It is switched off per request; see ONE_SHOT.
     clients.set(key, existing);
   }
   return existing;
@@ -77,6 +102,14 @@ function cooldownFor(err: unknown): number | null {
     return ENTITLEMENT_COOLDOWN_MS;
   }
   if (/\b429\b|quota|rate.?limit|resource.?exhausted/i.test(message)) {
+    // Google says how long to wait; believe it, within reason. A per-day
+    // limit is a different thing from a busy minute and is sidelined for far
+    // longer, so the next visitor's request goes straight to a key that works.
+    if (/per.?day|daily/i.test(message)) return DAILY_QUOTA_COOLDOWN_MS;
+    const said = /retry.?(?:delay|in|after)\D{0,4}(\d+(?:\.\d+)?)\s*s/i.exec(message);
+    if (said) {
+      return Math.min(Math.max(Number(said[1]) * 1000, 5_000), DAILY_QUOTA_COOLDOWN_MS);
+    }
     return RATE_LIMIT_COOLDOWN_MS;
   }
   return null;
@@ -302,13 +335,14 @@ export async function callGemini<T>(o: CallOpts<T>): Promise<CallResult<T>> {
   let spent = 0;
 
   outer: for (const model of declared) {
-    for (const attempt of attemptsFor(model)) {
+    for (const attempt of attemptsFor(model).slice(0, KEYS_PER_TIER)) {
       if (spent >= MAX_ATTEMPTS) break outer;
       spent++;
       const t0 = Date.now();
       try {
         const interaction: any = await (clientFor(attempt.key).interactions as any).create(
           buildParams(o, model),
+          ONE_SHOT,
         );
         const raw: string = interaction?.output_text ?? "";
         const data = (o.schema ? JSON.parse(stripFence(raw)) : raw) as T;
@@ -385,7 +419,7 @@ export async function streamGemini(opts: {
   // Opening the stream is where a refusal surfaces, so key rotation happens
   // here rather than mid-read.
   const { value: stream, attempt } = await withKeys<any>(opts.model, (c) =>
-    (c.interactions as any).create(params),
+    (c.interactions as any).create(params, ONE_SHOT),
   );
   const encoder = new TextEncoder();
 
@@ -479,7 +513,7 @@ export async function callWithTools(opts: {
     if (opts.thinking) params.generation_config = { thinking_level: opts.thinking };
 
     for (let round = 0; round < (opts.maxRounds ?? 3); round++) {
-      const interaction: any = await (c.interactions as any).create(params);
+      const interaction: any = await (c.interactions as any).create(params, ONE_SHOT);
       const calls = (interaction?.steps ?? []).filter(
         (s: any) => s?.type === "function_call",
       );
@@ -654,7 +688,7 @@ export async function speak(text: string): Promise<string | null> {
             voice_config: { prebuilt_voice_config: { voice_name: "Charon" } },
           },
         },
-      }),
+      }, ONE_SHOT),
     );
     record({
       key: attempt.number,

@@ -1,7 +1,7 @@
 /**
  * Designs a work simulation for a chosen domain.
  *
- * Gemini capabilities: structured output against a schema, high thinking level,
+ * Gemini capabilities: structured output against a schema, medium thinking level,
  * optional Google Search grounding to calibrate against what the role actually
  * involves in 2026 rather than what a posting claims.
  */
@@ -43,12 +43,15 @@ export async function POST(req: Request) {
       label: calibrate ? "design simulation (search-calibrated)" : "design simulation",
       capability: calibrate
         ? "Structured output + Google Search grounding"
-        : "Structured output + high thinking",
+        : "Structured output + medium thinking",
       model: MODELS.architect,
       system: CHALLENGE_SYSTEM,
       input: challengePrompt(domain, DOMAIN_LABEL[domain], roleContext ?? "", calibrate),
       schema: CHALLENGE_SCHEMA,
-      thinking: "high",
+      // Medium, not high. The design is long-form JSON and a candidate is
+      // sitting on a spinner while it is written; high thinking roughly
+      // doubled the wait without changing the simulations it produced.
+      thinking: "medium",
       search: calibrate,
       fixture: () => fixtureRaw(),
     });

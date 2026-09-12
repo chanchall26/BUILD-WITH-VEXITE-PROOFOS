@@ -66,6 +66,20 @@ flowchart LR
 
 ---
 
+## 🏆 Judging criteria — where each one is answered
+
+| Weight | Criterion | What PROOFOS does about it | Read / try |
+|---|---|---|---|
+| **20%** | 🌍 **Real-world problem & impact** | AI has made CVs, cover letters and take-homes worthless as signals; 1 in 4 candidate profiles is projected to be fake by 2028. PROOFOS replaces *claims* with *recorded evidence*, and measures the one skill hiring now depends on: catching an AI when it's confidently wrong. Built for India DPDP 2023 and the EU AI Act from day one. | [The problem](#-the-problem-we-are-solving) · [Market impact](#-market-and-industry-impact) · [Privacy & law](#-privacy-security-and-the-law) |
+| **20%** | 🤖 **Best use of Google Gemini API** | Twelve Gemini capabilities, each picked for one job and no other: Pro with high thinking designs the test, Flash with function calling *is* the wrong-on-purpose teammate, structured output feeds Zod, Search grounding calibrates to a live role, transcribe + TTS run the spoken defence, embeddings match skills to jobs. Gemini finds and quotes the evidence; **it never decides the score**. Every call is visible live at `/engine`. | [Best use of Gemini](#-why-this-is-the-best-use-of-the-gemini-api) · [Capability table](#-how-gemini-is-used) · try `/engine` |
+| **15%** | 💡 **Innovation & creativity** | Two new ideas: the **AI Judgment Quotient** (six facets — detect, question, verify, direct, correct, decide — scored from what you actually did with a fallible AI) and **trust calibration** (does your confidence match reality?). An AI colleague that is *wrong on purpose*, with the evidence it skipped shown on screen. A passport whose scores **fade as the proof ages**. | [The two new ideas](#-the-two-new-ideas) · [Innovation](#-innovation-and-uniqueness) |
+| **15%** | 🎨 **UI/UX & user experience** | One 16-minute flow with no install and no account. The homepage teaches the product with interactive diagrams — the six-part judgment loop, the "AI read the wrong chart" demo with real mini-charts, a live passport. Focus mode, on-device camera guard with visible counters, light/dark, reduced-motion respected, keyboard and screen-reader labels throughout. | [Every feature](#-every-feature-in-easy-words) · try the [live demo](https://build-with-vexite-proofos.vercel.app) |
+| **10%** | 🚀 **Deployment & accessibility** | Live on Vercel; CI (lint → typecheck → 83 tests → build) on every push; **runs with no API key at all** in fixture mode so anyone can clone and use it in one command; passports verify offline from a QR code; did:web public key published. | [Running it yourself](#-running-it-yourself) · [Testing](#-testing) |
+| **10%** | ⚙️ **Technical implementation** | Next.js 16 + TypeScript, stateless sealed sessions, Ed25519-signed W3C Verifiable Credentials 2.0 with a bitstring revocation list, deterministic scoring with a fixed seed, Gemini key-pool rotation with quota-aware cooldowns and hard timeouts, pro → flash → lite → fixture fallback so no candidate is ever failed mid-session. | [Architecture](#-architecture) · [How a score is calculated](#-how-a-score-is-actually-calculated) |
+| **10%** | 🎤 **Demo & presentation** | A guided tour at `/demo` walks a judge through the whole story in four minutes, including the employer ranking that flips once evidence replaces writing quality. Every number on the homepage is one click from the evidence that produced it. | try `/demo` · [Pages at a glance](#pages-at-a-glance) |
+
+---
+
 ## 🚨 The problem we are solving
 
 ### Hiring signals are broken
@@ -668,6 +682,40 @@ flowchart LR
 ```
 
 **Every prompt lives in one file:** [`lib/prompts.ts`](lib/prompts.ts). When somebody challenges a result, the thing being argued about is a file a human can read, not behaviour scattered across twenty route handlers. Every prompt carries the same standing instruction: *judge only what is visible in the work; never guess at personality, background, accent, fluency or emotion.*
+
+### 🏅 Why this is the best use of the Gemini API
+
+Most hackathon projects use one model for everything and ask it for a verdict. PROOFOS does neither. Here is what "best use" means in this codebase, with the file that proves each point.
+
+**1. The right model and the right amount of thinking for each job.**
+[`lib/config.ts`](lib/config.ts) names seven models by *role* — architect, workhorse, swift, transcribe, speech, live, embedding — and every route picks a thinking level to match the job:
+
+| Job | Model | Thinking | Why |
+|---|---|---|---|
+| Design the simulation | `gemini-3.1-pro-preview` | **medium** | Long structured JSON; high thinking doubled the wait without changing the design ([`app/api/challenge/route.ts`](app/api/challenge/route.ts)) |
+| Extract evidence from the transcript | pro | **high** | This is the part a candidate can dispute, so it gets the most careful pass ([`lib/evaluate.ts`](lib/evaluate.ts)) |
+| Build the calibration set | pro | **high** | Must hit an exact truth-label mix (right-cautious / wrong-certain / dangerous) |
+| Be the AI teammate, live | `gemini-3.8-flash` | **low** | It has to feel like a colleague typing, not a model deliberating ([`app/api/counterpart/route.ts`](app/api/counterpart/route.ts)) |
+| Judge the spoken defence, score role gaps | flash | **medium** | Balanced |
+| Classify, rewrite | `gemini-3.5-flash-lite` | — | Cheap and instant |
+
+**2. Gemini is the witness, never the judge.**
+Gemini reads the transcript and returns *quoted evidence* against a Zod schema — the sentence the candidate wrote, which of the six skills it shows, and how strongly. The **score is then computed by plain arithmetic** in [`lib/evidence.ts`](lib/evidence.ts) with a fixed seed (`EVAL_SEED = 20260912`), so the same session scores the same way twice and every number on a passport opens into the exact moments that produced it. No "the model said 79".
+
+**3. An AI that is wrong on purpose, built from two calls.**
+The teammate is one Flash model called twice per reply: a **function-calling consult turn** decides which simulated tools to open, then a **streaming reply turn** writes an answer from *only* what it opened. The tools it chose go back to the browser in a header, so the UI can show "it opened 1 of 3" — the candidate can see what it skipped. The mistake is real, not scripted: the model genuinely reasons from incomplete evidence.
+
+**4. Six modalities, one product.**
+Text → structured JSON (design, evidence, role reading) · **PDF / image in** (paste a job advert as a photo) · **Google Search grounding** (live market figures and role calibration with citations) · **audio in** (`gemini-3.5-transcribe` for the spoken defence) · **audio out** (`gemini-3.1-flash-tts-preview` reads the question aloud) · **embeddings** (`gemini-embedding-2`, 768-d, for skill-to-role matching). Each one is there because the product needed it, not to tick a box.
+
+**5. Production-grade resilience around a free-tier API.**
+[`lib/gemini.ts`](lib/gemini.ts) runs a key pool with round-robin rotation. A 429 sidelines that key for the time Google actually asks for (parsed from the error), a *daily* quota hit sidelines it for an hour, an entitlement error for five minutes. The SDK's own retry is turned off (`retryOptions: { attempts: 1 }`) and every call has a 55 s hard deadline, so one bad key costs milliseconds, not twenty seconds of backoff. If every key and every tier fails, the candidate gets a labelled fixture and **is never failed mid-session**.
+
+**6. Everything is observable.**
+`/engine` shows every Gemini call as it happens — model, capability, thinking level, latency, tokens, and whether it fell back. A judge can watch the product use the API rather than take the README's word for it.
+
+**7. Zero-key mode.**
+`npm install && npm run dev` works with no API key. Fixture mode replays real Gemini output, labelled on screen, so the flow can be reviewed anywhere — including on a judge's laptop with no quota.
 
 ---
 
