@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { PageHeader } from "@/components/layout/page-header";
+import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { AjqRadar } from "@/components/ajq-radar";
 import { CalibrationPlot } from "@/components/calibration-plot";
 import { DisclosureControl } from "@/components/disclosure-control";
@@ -121,13 +121,18 @@ export default function PassportPage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-6xl px-5 py-10">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="mt-6 h-48 w-full" />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* A loading screen still needs a way out. */}
+        <BackLink href="/" label="Back to home" />
+        <Skeleton className="mt-6 h-9 w-56" />
+        <Skeleton className="mt-6 h-44 w-full" />
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-40" />
           ))}
         </div>
+        <p className="sr-only" role="status">
+          Opening your results
+        </p>
       </div>
     );
   }
