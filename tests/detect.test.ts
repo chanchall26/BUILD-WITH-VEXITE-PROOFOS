@@ -383,3 +383,63 @@ test("beats are played in order, once each", () => {
 test("played beats are read back off the transcript", () => {
   assert.deepEqual([...playedBeats([{ beats: [1] }, {}, { beats: [3, 1] }])].sort(), [1, 3]);
 });
+
+// ---------------------------------------------------------------- key pool
+
+function withEnv(vars: Record<string, string | undefined>, run: () => void) {
+  const saved: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(vars)) {
+    saved[k] = process.env[k];
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  try {
+    run();
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+const NO_KEYS = {
+  GEMINI_API_KEYS: undefined,
+  GEMINI_API_KEY: undefined,
+  GOOGLE_API_KEY: undefined,
+};
+
+test("no configured key means fixture mode", () => {
+  withEnv(NO_KEYS, () => {
+    assert.deepEqual(apiKeys(), []);
+    assert.equal(isDemoMode(), true);
+  });
+});
+
+test("a comma-separated pool is parsed, trimmed and deduplicated", () => {
+  withEnv({ ...NO_KEYS, GEMINI_API_KEYS: " keyAAAAAAAAAA, keyBBBBBBBBBB ,keyAAAAAAAAAA " }, () => {
+    assert.deepEqual(apiKeys(), ["keyAAAAAAAAAA", "keyBBBBBBBBBB"]);
+    assert.equal(isDemoMode(), false);
+  });
+});
+
+test("the single-key variable still works, and combines with the pool", () => {
+  withEnv({ ...NO_KEYS, GEMINI_API_KEY: "soloKeyAAAAAAA" }, () => {
+    assert.deepEqual(apiKeys(), ["soloKeyAAAAAAA"]);
+  });
+  withEnv({ ...NO_KEYS, GEMINI_API_KEYS: "poolKeyAAAAAAA", GEMINI_API_KEY: "soloKeyAAAAAAA" }, () => {
+    assert.deepEqual(apiKeys(), ["poolKeyAAAAAAA", "soloKeyAAAAAAA"]);
+  });
+});
+
+test("blank and obviously truncated entries are dropped rather than tried", () => {
+  withEnv({ ...NO_KEYS, GEMINI_API_KEYS: "realKeyAAAAAAAAAA,,short,   ,alsoRealKeyBBBB" }, () => {
+    assert.deepEqual(apiKeys(), ["realKeyAAAAAAAAAA", "alsoRealKeyBBBB"]);
+  });
+});
+
+test("newline-separated keys work, because that is how they get pasted", () => {
+  withEnv({ ...NO_KEYS, GEMINI_API_KEYS: "keyAAAAAAAAAA\nkeyBBBBBBBBBB" }, () => {
+    assert.deepEqual(apiKeys(), ["keyAAAAAAAAAA", "keyBBBBBBBBBB"]);
+  });
+});
