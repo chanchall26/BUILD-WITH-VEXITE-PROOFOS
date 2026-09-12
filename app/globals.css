@@ -68,6 +68,7 @@
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+  --font-display: var(--font-display-face), var(--font-geist-sans), ui-sans-serif, sans-serif;
 }
 
 /* Dark by system preference, unless light was explicitly chosen. */
@@ -165,25 +166,57 @@ body {
 
 /* ══════════════════════════════════════════════ Type scale */
 
+/* Headlines and the brand speak in the display face. Body stays Geist. */
 .display {
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 6.2vw, 4.75rem);
   line-height: 1;
-  letter-spacing: -0.042em;
-  font-weight: 640;
+  letter-spacing: -0.035em;
+  font-weight: 700;
 }
 
 .headline {
+  font-family: var(--font-display);
   font-size: clamp(1.7rem, 3.4vw, 2.5rem);
   line-height: 1.1;
-  letter-spacing: -0.032em;
-  font-weight: 620;
+  letter-spacing: -0.028em;
+  font-weight: 700;
 }
 
 .title {
+  font-family: var(--font-display);
   font-size: clamp(1.2rem, 2vw, 1.5rem);
   line-height: 1.2;
-  letter-spacing: -0.024em;
+  letter-spacing: -0.02em;
   font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════ Header */
+
+/* Solid enough to read as a bar at rest, translucent enough to feel light. */
+.header-bar {
+  background: color-mix(in srgb, var(--color-slab) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+}
+
+.nav-link {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+.wordmark-accent {
+  background: linear-gradient(120deg, var(--color-signal), var(--color-violet));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .subhead {

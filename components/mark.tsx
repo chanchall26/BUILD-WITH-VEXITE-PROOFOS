@@ -10,7 +10,7 @@ export function Mark({ size = 26 }: { size?: number }) {
       viewBox="0 0 32 32"
       fill="none"
       aria-hidden="true"
-      className="shrink-0"
+      className="shrink-0 drop-shadow-[0_2px_6px_color-mix(in_srgb,var(--color-signal)_35%,transparent)]"
     >
       <path
         d="M16 2.2 27.4 8.5v15L16 29.8 4.6 23.5v-15z"
@@ -40,12 +40,24 @@ export function Mark({ size = 26 }: { size?: number }) {
   );
 }
 
-export function Wordmark({ size = 24 }: { size?: number }) {
+/**
+ * The wordmark. PROOF in the text colour, OS in the brand gradient, set in the
+ * display face with a little tracking so it reads as a name and not a word.
+ */
+export function Wordmark({ size = 26, tagline = false }: { size?: number; tagline?: boolean }) {
+  const text = Math.round(size * 0.72);
   return (
     <span className="inline-flex items-center gap-2.5">
       <Mark size={size} />
-      <span className="text-[16px] font-bold tracking-[-0.01em] text-bright">
-        PROOF<span className="text-signal">OS</span>
+      <span className="flex flex-col">
+        <span className="wordmark text-bright" style={{ fontSize: text }}>
+          PROOF<span className="wordmark-accent">OS</span>
+        </span>
+        {tagline && (
+          <span className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-dim">
+            Proof of skill
+          </span>
+        )}
       </span>
     </span>
   );

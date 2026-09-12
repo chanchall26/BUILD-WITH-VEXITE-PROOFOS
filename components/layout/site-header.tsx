@@ -53,20 +53,20 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
 
   return (
     <>
+      {/* Always a visible bar. It reads as the header from the first pixel,
+          and gains a shadow once the page moves underneath it. */}
       <header
         className={cn(
-          "sticky top-0 z-50 transition-all duration-300",
-          scrolled
-            ? "glass border-b border-edge-soft shadow-[var(--shadow-sm)]"
-            : "border-b border-transparent bg-transparent",
+          "header-bar sticky top-0 z-50 border-b transition-shadow duration-300",
+          scrolled ? "border-edge shadow-[var(--shadow-card)]" : "border-edge-soft",
         )}
       >
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5">
+        <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-3 px-5">
           <Link href="/" aria-label="PROOFOS home" className="shrink-0">
-            <Wordmark />
+            <Wordmark size={30} />
           </Link>
 
-          <nav className="ml-6 hidden items-center gap-0.5 lg:flex" aria-label="Main">
+          <nav className="ml-7 hidden items-center gap-1 lg:flex" aria-label="Main">
             {LINKS.map((l) => {
               const active = isActive(l.href);
               return (
@@ -75,18 +75,13 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors",
-                    active ? "text-bright" : "text-muted hover:text-bright",
+                    "nav-link relative rounded-xl px-3.5 py-2 text-[14px] transition-colors",
+                    active
+                      ? "bg-wash text-signal"
+                      : "text-muted hover:bg-raise hover:text-bright",
                   )}
                 >
                   {l.label}
-                  <span
-                    className={cn(
-                      "absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-signal transition-all duration-300",
-                      active ? "opacity-100" : "scale-x-0 opacity-0",
-                    )}
-                    aria-hidden="true"
-                  />
                 </Link>
               );
             })}
@@ -133,7 +128,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
           />
           <div className="slide-up absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-edge bg-slab p-5 pb-8 shadow-[var(--shadow-pop)]">
             <div className="mb-4 flex items-center">
-              <Wordmark size={22} />
+              <Wordmark size={26} />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -153,7 +148,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
                     href={l.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex items-center rounded-xl px-4 py-3.5 text-[15px] font-medium transition-colors",
+                      "nav-link flex items-center rounded-xl px-4 py-3.5 text-[15.5px] transition-colors",
                       active ? "bg-wash text-signal" : "text-bright hover:bg-raise",
                     )}
                   >
