@@ -1,5 +1,7 @@
 # PROOFOS
 
+**Live demo:** [build-with-vexite-proofos.vercel.app](https://build-with-vexite-proofos.vercel.app)
+
 **The AI-native trust layer for hiring.**
 
 The résumé says what you claim. PROOFOS shows what you can prove: what you can actually do, how well you supervise a machine that is confidently wrong, and whether that proof still holds today.
