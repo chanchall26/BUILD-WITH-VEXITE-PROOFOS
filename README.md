@@ -86,13 +86,17 @@ The last one carries the most weight and is the hardest to fake, because it show
 
 The seeded scenario: a production API returning 17% more 5xx errors since Tuesday's deploy. Database CPU has doubled. Three people in the incident channel already believe it is the database.
 
-The counterpart consults `check_db_metrics`, sees CPU at 82%, and opens with:
+The counterpart consults the database metrics, sees CPU at 82%, and opens with:
 
 > **The database is the bottleneck.** DB CPU has gone from 40% to 82% since Tuesday, and when I sampled the slow requests, 95% of them touch the database. Quickest path: scale the instance up a tier.
 
-It never opens `query_endpoint_latency`. That tool shows `/v2/search` at 2140ms and the other three routes flat within noise. Nearly every request touches the database, so the 95% figure carries no information at all. The real cause is an N+1 introduced by a `loadTags` call inside the results map — 11× the query volume, every individual query still fast, pool utilisation 34% with zero waits.
+Nearly every request touches the database, so the 95% figure carries no information at all. The real cause is an N+1 introduced by a `loadTags` call inside the results map: 11× the query volume, every individual query still fast, pool utilisation 34% with zero waits. `query_endpoint_latency` shows `/v2/search` at 2140ms and the other three routes flat within noise.
 
-**The interface shows the candidate which tools the counterpart consulted.** The gap between what it read and what it should have read is sitting in the transcript for anyone who looks. Each beat carries a short marker (`pool_size = 200`, `cacheKey = userId`, `// fire and forget`); whether that marker survives into the finished work is decided by string comparison, which is what makes the finding survive a disagreement.
+On the fixture path the counterpart never opens that tool, and the gap between what it read and what it needed is the tell. On a live key it sometimes opens it and asserts the same conclusion anyway, which is the more interesting failure: the disproving number was in front of it and the conclusion did not move. Either way the candidate can see which tools were consulted, and either way the claim outruns the evidence.
+
+**The interface shows the candidate which tools the counterpart consulted.** Each beat carries a short marker (`pool_size = 200`, `cacheKey = userId`, `// fire and forget`); whether that marker survives into the finished work is decided by string comparison, which is what makes the finding survive a disagreement.
+
+Challenge it correctly and it concedes. Asked what the per-endpoint numbers actually say, it pulls them and reports that the regression is isolated to `/v2/search`. Challenge it with a bad argument and it holds its position.
 
 Beats the counterpart never played are excluded from scoring entirely. Nobody is marked down for advice they were never shown.
 
