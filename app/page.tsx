@@ -1,6 +1,16 @@
 import Link from "next/link";
+import { AjqRadar } from "@/components/ajq-radar";
 import { MarketPulse } from "@/components/market-pulse";
+import { PassportCard } from "@/components/passport-card";
 import { AJQ_FACETS, FACET_LABEL, FACET_QUESTION } from "@/lib/domain";
+import { FIXTURE_PASSPORTS } from "@/lib/fixtures";
+
+/**
+ * A fixed reference time for the sample passport. The page is prerendered, so
+ * calling Date.now() here would bake in the build time and drift from what the
+ * browser computes, which React reports as a hydration mismatch.
+ */
+const SNAPSHOT_AT = Date.parse("2026-09-12T12:00:00.000Z");
 
 const LAYERS = [
   {
@@ -56,32 +66,43 @@ export default function Home() {
         <div className="aurora absolute inset-0" aria-hidden="true" />
         <div className="gridwork absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative mx-auto max-w-6xl px-5 pb-14 pt-16 sm:pt-24">
-          <div className="rise max-w-3xl">
-            <span className="eyebrow">Proof Operating System · built on Google Gemini</span>
-            <h1 className="display mt-4">
-              The résumé says
-              <br />
-              what you claim.
-              <br />
-              <span className="text-signal">This shows what</span>
-              <br />
-              <span className="text-signal">you can prove.</span>
-            </h1>
-            <p className="subhead mt-6 max-w-xl">
-              PROOFOS is the trust layer for hiring in an AI-native workplace. Not who a
-              candidate is. What they can actually do, how well they supervise a machine
-              that is sometimes wrong, and whether that proof still holds today.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/challenge" className="btn btn-primary">
-                Build my proof passport
-              </Link>
-              <Link href="/employer" className="btn btn-ghost">
-                Verify a candidate
-              </Link>
-              <Link href="/demo" className="btn btn-quiet">
-                Three-minute demo path →
-              </Link>
+          <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+            <div className="rise">
+              <span className="eyebrow">Proof Operating System · built on Google Gemini</span>
+              <h1 className="display mt-4">
+                The résumé says
+                <br />
+                what you claim.
+                <br />
+                <span className="text-signal">This shows what</span>
+                <br />
+                <span className="text-signal">you can prove.</span>
+              </h1>
+              <p className="subhead mt-6 max-w-xl">
+                PROOFOS is the trust layer for hiring in an AI-native workplace. Not who a
+                candidate is. What they can actually do, how well they supervise a machine
+                that is sometimes wrong, and whether that proof still holds today.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link href="/challenge" className="btn btn-primary">
+                  Build my proof passport
+                </Link>
+                <Link href="/employer" className="btn btn-ghost">
+                  Verify a candidate
+                </Link>
+                <Link href="/demo" className="btn btn-quiet">
+                  Three-minute demo path →
+                </Link>
+              </div>
+            </div>
+
+            {/* What comes out of it, shown rather than described. */}
+            <div className="rise mx-auto w-full max-w-sm lg:max-w-none">
+              <PassportCard passport={FIXTURE_PASSPORTS[0]} at={SNAPSHOT_AT} />
+              <p className="mt-3 text-center text-[12px] leading-relaxed text-dim lg:text-left">
+                A finished passport. Every number here was calculated from the 36
+                observations behind it, and each bar fades as that evidence ages.
+              </p>
             </div>
           </div>
 
@@ -165,23 +186,29 @@ export default function Home() {
             evidence trail, each scored only where evidence exists.
           </p>
 
-          <ol className="mt-9 grid gap-px overflow-hidden rounded-xl border border-edge-soft bg-edge-soft sm:grid-cols-2 lg:grid-cols-3">
-            {AJQ_FACETS.map((facet, i) => (
-              <li key={facet} className="bg-slab p-5">
-                <div className="flex items-baseline gap-2.5">
-                  <span className="numeral text-[12px] text-signal">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="text-[16px] font-semibold tracking-[-0.015em]">
-                    {FACET_LABEL[facet]}
-                  </h3>
-                </div>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
-                  {FACET_QUESTION[facet]}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <div className="mt-9 grid items-start gap-8 lg:grid-cols-[auto_1fr] lg:gap-12">
+            <div className="panel mx-auto w-full max-w-[320px] p-5 lg:mx-0">
+              <AjqRadar facets={FIXTURE_PASSPORTS[0].ajq.facets} />
+            </div>
+
+            <ol className="grid gap-px overflow-hidden rounded-xl border border-edge-soft bg-edge-soft sm:grid-cols-2">
+              {AJQ_FACETS.map((facet, i) => (
+                <li key={facet} className="bg-slab p-5">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="numeral text-[12px] text-signal">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="text-[16px] font-semibold tracking-[-0.015em]">
+                      {FACET_LABEL[facet]}
+                    </h3>
+                  </div>
+                  <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+                    {FACET_QUESTION[facet]}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </div>
 
           <p className="mt-6 max-w-2xl text-[14px] leading-relaxed text-dim">
             The last one carries the most weight and is the hardest to fake. Deciding not to

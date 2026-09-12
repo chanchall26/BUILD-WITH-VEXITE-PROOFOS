@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
+import { AjqRadar } from "@/components/ajq-radar";
 import { CalibrationPlot } from "@/components/calibration-plot";
 import { DisclosureControl } from "@/components/disclosure-control";
 import { ProofGraph } from "@/components/proof-graph";
@@ -294,6 +295,13 @@ export default function PassportPage() {
 
         {/* Sidebar ------------------------------------------------------- */}
         <div className="space-y-6">
+          <Panel
+            title="AI judgment, by facet"
+            note="A single number hides the lopsided cases, which are the interesting ones."
+          >
+            <AjqRadar facets={result.profile.ajq.facets} />
+          </Panel>
+
           <Panel title="Freshness">
             <p className="text-[12.5px] leading-relaxed text-muted">
               Evidence decays. Each capability has its own half-life, because knowing how
