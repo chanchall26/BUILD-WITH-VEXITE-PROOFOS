@@ -41,6 +41,58 @@ export function client(): GoogleGenAI {
   return cached;
 }
 
+// ------------------------------------------------------------ circuit breaker
+
+/**
+ * Not every key can reach every model. A free-tier key has no quota for the
+ * pro tier at all, so without this the product spends ten seconds failing on
+ * the same model before every single fallback, on every request.
+ *
+ * A model that answers 429 or 403 is skipped for a few minutes and the next
+ * tier is used directly. Transient errors are not recorded, so a one-off
+ * network blip does not sideline a model that works.
+ */
+/** A rate limit clears in about a minute; a missing entitlement does not. */
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+const ENTITLEMENT_COOLDOWN_MS = 5 * 60_000;
+const unavailable = new Map<string, number>();
+
+function cooldownFor(err: unknown): number | null {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/\b(403|404)\b|permission|not found|unsupported|not available/i.test(message)) {
+    return ENTITLEMENT_COOLDOWN_MS;
+  }
+  if (/\b429\b|quota|rate.?limit|resource.?exhausted/i.test(message)) {
+    return RATE_LIMIT_COOLDOWN_MS;
+  }
+  return null;
+}
+
+function isUnavailable(model: string): boolean {
+  const until = unavailable.get(model);
+  if (until === undefined) return false;
+  if (Date.now() >= until) {
+    unavailable.delete(model);
+    return false;
+  }
+  return true;
+}
+
+function markUnavailable(model: string, err: unknown): void {
+  const cooldown = cooldownFor(err);
+  if (cooldown === null) return; // a transient blip must not sideline a working model
+  unavailable.set(model, Date.now() + cooldown);
+}
+
+/** Which models this key has been refused by, for the engine page. */
+export function sidelinedModels(): { model: string; retryInSeconds: number }[] {
+  const now = Date.now();
+  return Array.from(unavailable, ([model, until]) => ({
+    model,
+    retryInSeconds: Math.max(0, Math.round((until - now) / 1000)),
+  })).filter((m) => m.retryInSeconds > 0);
+}
+
 // ---------------------------------------------------------------- shapes
 
 /**
@@ -152,8 +204,21 @@ export async function callGemini<T>(o: CallOpts<T>): Promise<CallResult<T>> {
     return { data, source: "fixture", sources: [], model: "fixture", ms: 0 };
   }
 
-  const tiers =
-    o.model === MODELS.architect ? [o.model, MODELS.workhorse] : [o.model, MODELS.swift];
+  // Deduplicated, because a deployment can point the architect tier at the
+  // workhorse model. Without this, the fallback would retry the same model
+  // that just failed and pay a second round trip to learn nothing.
+  const declared = [
+    ...new Set(
+      o.model === MODELS.architect
+        ? [o.model, MODELS.workhorse, MODELS.swift]
+        : [o.model, MODELS.swift],
+    ),
+  ];
+  // Skip tiers this key has already been refused by, rather than paying the
+  // round trip to be refused again. If every tier is sidelined, try them all
+  // anyway: a cooldown should never be the reason nothing is attempted.
+  const reachable = declared.filter((m) => !isUnavailable(m));
+  const tiers = reachable.length ? reachable : declared;
   let lastError: unknown;
 
   for (const model of tiers) {
@@ -176,6 +241,7 @@ export async function callGemini<T>(o: CallOpts<T>): Promise<CallResult<T>> {
       };
     } catch (err) {
       lastError = err;
+      markUnavailable(model, err);
       record({
         label: o.label,
         model,
@@ -243,6 +309,7 @@ export async function streamGemini(opts: {
           fixture: false,
         });
       } catch (err) {
+        markUnavailable(opts.model, err);
         record({
           label: opts.label,
           model: opts.model,
@@ -354,17 +421,23 @@ export async function callWithTools(opts: {
       };
     }
 
+    // Running out of rounds having resolved tools is the normal outcome for a
+    // consult turn, which is called with maxRounds of one. It is only a
+    // failure when the loop ended with nothing to show for it.
     record({
       label: opts.label,
       model: opts.model,
       capability: "Function calling",
       ms: Date.now() - t0,
-      ok: false,
+      ok: made.length > 0,
       fixture: false,
-      note: "tool loop hit its round limit",
+      note: made.length
+        ? `resolved ${made.length} tool call${made.length === 1 ? "" : "s"}`
+        : "tool loop ended without a reply",
     });
     return { text: "", calls: made };
   } catch (err) {
+    markUnavailable(opts.model, err);
     record({
       label: opts.label,
       model: opts.model,

@@ -87,17 +87,24 @@ const REFUSED = [
   "Whether to hire anyone. The system produces coverage and evidence, and no decision at all.",
 ];
 
+interface Sidelined {
+  model: string;
+  retryInSeconds: number;
+}
+
 export default function EnginePage() {
   const [calls, setCalls] = useState<GeminiCall[]>([]);
   const [demoMode, setDemoMode] = useState(false);
+  const [sidelined, setSidelined] = useState<Sidelined[]>([]);
 
   useEffect(() => {
     const load = () =>
       fetch("/api/calls")
         .then((r) => r.json())
-        .then((d: { calls: GeminiCall[]; demoMode: boolean }) => {
+        .then((d: { calls: GeminiCall[]; demoMode: boolean; sidelined?: Sidelined[] }) => {
           setCalls(d.calls ?? []);
           setDemoMode(d.demoMode);
+          setSidelined(d.sidelined ?? []);
         })
         .catch(() => {});
     load();
@@ -123,6 +130,25 @@ export default function EnginePage() {
           served from deterministic fixtures and logged as such. Add a key and every row
           below becomes a real request.
         </p>
+      )}
+
+      {sidelined.length > 0 && (
+        <div className="mt-6 rounded-lg border border-caution/40 bg-caution/5 px-4 py-3 text-[13px] leading-relaxed text-caution">
+          <p>
+            This key has no quota for{" "}
+            {sidelined.map((s) => (
+              <code key={s.model} className="font-mono">
+                {s.model}{" "}
+              </code>
+            ))}
+            right now, so those tiers are skipped rather than retried on every request.
+          </p>
+          <p className="mt-1 text-dim">
+            Work continues on the next tier down, and the sideline lifts automatically in{" "}
+            {Math.max(...sidelined.map((s) => s.retryInSeconds))} seconds. Free-tier keys do
+            not include the pro tier, so this is expected rather than broken.
+          </p>
+        </div>
       )}
 
       <div className="mt-8 overflow-x-auto">

@@ -55,7 +55,9 @@ export async function POST(req: Request) {
       system: ROLE_SYSTEM,
       input,
       schema: ROLE_SCHEMA,
-      thinking: "high",
+      // Extraction from a short posting, not design. Medium keeps a hiring
+      // manager from watching a spinner for forty seconds.
+      thinking: "medium",
       search: calibrate,
       fixture: () => ({
         title: FIXTURE_ROLE.title,

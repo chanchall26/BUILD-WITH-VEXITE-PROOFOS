@@ -13,11 +13,17 @@ export const APP = {
     "The résumé says what you claim. PROOFOS shows what you can prove: what you can do, how you handle AI, and whether that proof still holds today.",
 } as const;
 
+/**
+ * Free-tier keys have no quota for the pro tier at all. Rather than pay a
+ * refused round trip on every cold start, a deployment can point the architect
+ * tier at the workhorse model and lose a little rubric quality for a lot of
+ * latency. See .env.example.
+ */
 export const MODELS = {
   /** Deep reasoning: challenge design, evidence extraction, evaluation. */
-  architect: "gemini-3.1-pro-preview",
+  architect: process.env.GEMINI_ARCHITECT_MODEL || "gemini-3.1-pro-preview",
   /** Workhorse: the AI counterpart, role analysis, drafting. */
-  workhorse: "gemini-3.8-flash",
+  workhorse: process.env.GEMINI_WORKHORSE_MODEL || "gemini-3.8-flash",
   /** Cheap and fast: classification and short rewrites. */
   swift: "gemini-3.5-flash-lite",
   /** Speech to text for the spoken defence. */
