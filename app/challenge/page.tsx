@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  Camera,
   ChevronDown,
   FileText,
   Play,
@@ -12,9 +13,24 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CalibrationStep } from "@/components/challenge/calibration-step";
+import {
+  CameraCurtain,
+  CameraDock,
+  CameraPreview,
+  CameraStatusChip,
+  useCameraGuard,
+  type CameraStatus,
+} from "@/components/challenge/camera-guard";
 import { CounterpartPanel } from "@/components/challenge/counterpart-panel";
 import { DefenceStep } from "@/components/challenge/defence-step";
 import { AwayCurtain, FocusBar, useFocusGuard } from "@/components/challenge/focus-mode";
+import {
+  MAX_WARNINGS,
+  StrikeModal,
+  StrikePill,
+  useStrikePolicy,
+  type Strike,
+} from "@/components/challenge/strike-policy";
 import { PageHeader } from "@/components/layout/page-header";
 import { Mark } from "@/components/mark";
 import { Button, buttonStyles } from "@/components/ui/button";
@@ -56,12 +72,14 @@ const WE_RECORD = [
   "Your answers in the trust quiz",
   "The words from two short spoken answers. The recording is deleted straight after.",
   "Simple counts: pastes, edits, time, and times you left the test",
+  "Camera counts: seconds the camera was blank, no face in view, or eyes off the screen. Checked on your device; you see it live.",
+  "Warnings. You get two, for a problem that goes on: leaving the tab or full screen, no face in view, a second person, eyes off the screen for a while, or a dark camera. A third ends the test and scores what you have done.",
 ];
 
 const WE_NEVER = [
-  "No camera. No screen recording. No kept audio.",
-  "Nothing about how you sound or your accent",
-  "Nothing about you outside this task",
+  "No video is recorded, stored, or sent anywhere. Frames are checked on your device and thrown away.",
+  "No face recognition. We never identify you or match you to anything.",
+  "No screen recording. No kept audio. Nothing about how you sound or your accent.",
   "No automatic yes or no. A person decides.",
 ];
 
@@ -92,6 +110,37 @@ export default function ChallengePage() {
   const guarded = stage === "work" || stage === "calibration" || stage === "defence";
   const { counts, isFullscreen, away, enterFullscreen, exitFullscreen } =
     useFocusGuard(guarded);
+  const camera = useCameraGuard(guarded);
+  // Two warnings, then the test ends itself and is scored as it stands.
+  const strikePolicy = useStrikePolicy({
+    active: guarded,
+    cameraStatus: camera.status,
+    focus: counts,
+    onEnd: (last) => void submit([], last),
+  });
+  const strikeModal = guarded ? (
+    <StrikeModal
+      strike={strikePolicy.current}
+      onContinue={() => {
+        strikePolicy.dismiss();
+        if (!isFullscreen) void enterFullscreen();
+      }}
+    />
+  ) : null;
+  // The camera stays on screen from the moment it is switched on until the
+  // results arrive, and the test waits while it is off or blank.
+  const inTest = stage === "brief" || guarded;
+  const cameraDock = inTest ? (
+    <CameraDock
+      attach={camera.attach}
+      status={camera.status}
+      counts={camera.counts}
+      modelReady={camera.modelReady}
+    />
+  ) : null;
+  const cameraCurtain = guarded ? (
+    <CameraCurtain status={camera.status} error={camera.error} onRetry={() => void camera.start()} />
+  ) : null;
 
   useEffect(() => {
     if (window.location.hash !== "#seeded") return;
@@ -154,8 +203,12 @@ export default function ChallengePage() {
     setWork(next);
   }
 
-  async function submit(defence: DefenceAnswer[]) {
+  async function submit(defence: DefenceAnswer[], endedBy?: Strike) {
     if (!challenge) return;
+    // Snapshot the camera counts now; the camera itself is released when the
+    // results page takes over.
+    const cameraCounts = camera.counts;
+    const warnings = Math.min(strikePolicy.strikes.length + (endedBy ? 1 : 0), MAX_WARNINGS);
     setStage("scoring");
     void exitFullscreen();
     try {
@@ -177,6 +230,10 @@ export default function ChallengePage() {
             typedChars: typedChars.current,
             revisions: revisions.current,
             ...counts,
+            ...cameraCounts,
+            warnings,
+            autoEnded: Boolean(endedBy),
+            endedBy: endedBy?.reason,
           },
         }),
       });
@@ -360,40 +417,80 @@ export default function ChallengePage() {
           </p>
         </details>
 
-        <Card raised className="rise rise-3 mt-6 max-w-lg p-5">
-          <label htmlFor="name" className="label">
-            Your name
-          </label>
-          <input
-            id="name"
-            className="field"
-            value={holder}
-            onChange={(e) => setHolder(e.target.value)}
-            placeholder="This is what goes on your results"
-          />
-          <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13.5px] leading-relaxed text-muted">
+        <div className="rise rise-3 mt-6 grid gap-4 md:grid-cols-2">
+          <Card raised accent="var(--color-signal)" className="p-5">
+            <div className="flex items-center gap-2">
+              <Camera size={16} className="text-signal" aria-hidden="true" />
+              <h2 className="text-[14.5px] font-semibold">Camera check</h2>
+              <CameraStatusChip status={camera.status} className="ml-auto" />
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted">
+              The camera stays on for the whole test. It watches for a blank picture, a
+              missing face, or eyes off the screen, and shows you what it sees the entire
+              time. Nothing is recorded.
+            </p>
+            <div className="mt-4 flex flex-col items-start gap-3">
+              <CameraPreview attach={camera.attach} status={camera.status} size="md" />
+              {camera.error && <p className="text-[12.5px] text-alert">{camera.error}</p>}
+              {camera.on ? (
+                <p className="text-[12.5px] text-dim">
+                  {camera.modelReady
+                    ? "Sit so your face is in the frame and look at the screen."
+                    : "Camera is on. Loading the face check…"}
+                </p>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => void camera.start()}
+                  loading={camera.status === "starting"}
+                  loadingLabel="Starting camera…"
+                  icon={<Camera size={15} />}
+                >
+                  {camera.error ? "Try the camera again" : "Turn on camera"}
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          <Card raised className="p-5">
+            <label htmlFor="name" className="label">
+              Your name
+            </label>
             <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[var(--color-signal)]"
+              id="name"
+              className="field"
+              value={holder}
+              onChange={(e) => setHolder(e.target.value)}
+              placeholder="This is what goes on your results"
             />
-            I&apos;ve read the above and I want to take this test.
-          </label>
-          <Button
-            size="lg"
-            full
-            className="mt-5"
-            disabled={!agreed}
-            onClick={() => {
-              startedAt.current = Date.now();
-              setStage("brief");
-            }}
-            iconRight={<ArrowRight size={17} />}
-          >
-            Start
-          </Button>
-        </Card>
+            <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13.5px] leading-relaxed text-muted">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-[var(--color-signal)]"
+              />
+              I&apos;ve read the above and I want to take this test.
+            </label>
+            <Button
+              size="lg"
+              full
+              className="mt-5"
+              disabled={!agreed || !camera.on}
+              title={!camera.on ? "Turn on the camera first" : undefined}
+              onClick={() => {
+                startedAt.current = Date.now();
+                setStage("brief");
+              }}
+              iconRight={<ArrowRight size={17} />}
+            >
+              Start
+            </Button>
+            {!camera.on && (
+              <p className="mt-2 text-[12px] text-dim">The camera has to be on to start.</p>
+            )}
+          </Card>
+        </div>
       </Shell>
     );
   }
@@ -402,6 +499,7 @@ export default function ChallengePage() {
   if (stage === "brief") {
     return (
       <Shell>
+        {cameraDock}
         <Progress stage="brief" />
         <PageHeader
           back={{ label: "Back" }}
@@ -463,7 +561,8 @@ export default function ChallengePage() {
             Open my workspace
           </Button>
           <span className="text-[12.5px] text-dim">
-            Goes full screen. You can leave any time.
+            Goes full screen. Leaving it, or the tab, counts as a warning. Two warnings, then the
+            test ends and scores what you&apos;ve done.
           </span>
         </div>
       </Shell>
@@ -476,8 +575,13 @@ export default function ChallengePage() {
       <div className="mx-auto max-w-4xl px-5 py-8">
         <AssessmentBar
           stage="calibration"
+          cameraStatus={camera.status}
+          warnings={strikePolicy.strikes.length}
         />
         <AwayCurtain visible={away} />
+        {cameraCurtain}
+        {cameraDock}
+        {strikeModal}
         <div className="mt-5">
           <CalibrationStep
             domain={challenge.domain}
@@ -499,8 +603,13 @@ export default function ChallengePage() {
       <div className="mx-auto max-w-3xl px-5 py-8">
         <AssessmentBar
           stage="defence"
+          cameraStatus={camera.status}
+          warnings={strikePolicy.strikes.length}
         />
         <AwayCurtain visible={away} />
+        {cameraCurtain}
+        {cameraDock}
+        {strikeModal}
         {error && (
           <p className="mt-5 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
             {error}
@@ -543,9 +652,14 @@ export default function ChallengePage() {
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-4">
       <AwayCurtain visible={away} />
+      {cameraCurtain}
+      {cameraDock}
+      {strikeModal}
 
       <AssessmentBar
         stage="work"
+        cameraStatus={camera.status}
+        warnings={strikePolicy.strikes.length}
         action={
           <Button
             size="sm"
@@ -602,6 +716,7 @@ export default function ChallengePage() {
       <div className="mt-3">
         <FocusBar
           counts={counts}
+          camera={camera.counts}
           isFullscreen={isFullscreen}
           onEnterFullscreen={() => void enterFullscreen()}
           onExitFullscreen={() => void exitFullscreen()}
@@ -647,9 +762,13 @@ export default function ChallengePage() {
 /** The bar that stays visible through every stage of the test. */
 function AssessmentBar({
   stage,
+  cameraStatus,
+  warnings,
   action,
 }: {
   stage: Stage;
+  cameraStatus: CameraStatus;
+  warnings: number;
   action?: React.ReactNode;
 }) {
   const index = STEPS.findIndex((s) => s.stage === stage);
@@ -665,6 +784,8 @@ function AssessmentBar({
         </p>
       </div>
       <StepBar total={STEPS.length} done={index + 1} className="min-w-[120px] flex-1" />
+      <CameraStatusChip status={cameraStatus} className="hidden sm:inline-flex" />
+      <StrikePill used={warnings} />
       {action}
       <Link
         href="/"

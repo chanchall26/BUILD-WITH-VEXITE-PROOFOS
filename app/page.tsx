@@ -28,13 +28,13 @@ const SNAPSHOT_AT = Date.parse("2026-09-12T12:00:00.000Z");
 const PROMISES = [
   {
     icon: Camera,
-    title: "No camera, ever",
-    body: "We never watch you. Proof comes from your work, not surveillance.",
+    title: "Camera stays on your device",
+    body: "It checks the picture is real and your eyes are on the screen. No frame is ever stored or sent.",
   },
   {
     icon: EyeOff,
     title: "Nothing hidden from you",
-    body: "Anything we count is on screen while we count it.",
+    body: "Anything we count, camera included, is on screen while we count it.",
   },
   {
     icon: UserCheck,
@@ -109,7 +109,7 @@ export default function Home() {
                   href="/challenge"
                   className={buttonStyles({ size: "lg" })}
                 >
-                  Take the test
+                  Prove you&apos;re real
                   <ArrowRight size={17} aria-hidden="true" />
                 </Link>
                 <Link
@@ -125,7 +125,7 @@ export default function Home() {
                   <Clock size={13} aria-hidden="true" /> About 16 minutes
                 </li>
                 <li className="inline-flex items-center gap-1.5">
-                  <Camera size={13} aria-hidden="true" /> No camera
+                  <Camera size={13} aria-hidden="true" /> Camera on, never recorded
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                   <BadgeCheck size={13} aria-hidden="true" /> Nothing to install

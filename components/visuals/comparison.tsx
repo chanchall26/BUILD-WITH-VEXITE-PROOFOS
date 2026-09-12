@@ -14,7 +14,7 @@ const ROWS = [
   { label: "Reusable elsewhere", old: null, now: "At every company" },
   { label: "Expiry", old: "Never, or random", now: "Fades, skill by skill" },
   { label: "Evidence you can check", old: null, now: "Every score opens up" },
-  { label: "Needs your camera", old: "Usually yes", now: "Never" },
+  { label: "Your camera", old: "Recorded and watched", now: "Checked on your device, never stored" },
 ];
 
 export function Comparison() {

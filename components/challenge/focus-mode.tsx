@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { CameraCounts } from "@/components/challenge/camera-guard";
 
 /**
  * Test integrity, done openly.
@@ -9,8 +10,9 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
  * app, leaving full screen, copying out of the test, and how long you were
  * away. All of it is shown to you live, on screen, while it is being counted.
  *
- * Nothing here uses a camera, a microphone, or a screen recording, and nothing
- * is blocked. You can leave at any time. The counts go on the record next to
+ * The camera check lives next door in camera-guard.tsx and follows the same
+ * rule: every count is on screen while it is being counted. Nothing is
+ * recorded. You can leave at any time. The counts go on the record next to
  * your work, and a human reads them. Being interrupted is not cheating, and a
  * system that cannot tell the difference should not pretend to.
  */
@@ -138,17 +140,25 @@ export function useFocusGuard(active: boolean) {
 /** The always-visible strip. What is counted, and what it is currently at. */
 export function FocusBar({
   counts,
+  camera,
   isFullscreen,
   onEnterFullscreen,
   onExitFullscreen,
 }: {
   counts: FocusCounts;
+  camera?: CameraCounts;
   isFullscreen: boolean;
   onEnterFullscreen: () => void;
   onExitFullscreen: () => void;
 }) {
   const noted =
-    counts.focusLosses + counts.fullscreenExits + counts.copyEvents > 0;
+    counts.focusLosses +
+      counts.fullscreenExits +
+      counts.copyEvents +
+      (camera
+        ? camera.lookAwayEvents + camera.cameraBlankSeconds + camera.faceMissingSeconds
+        : 0) >
+    0;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-edge-soft bg-deep px-4 py-2.5">
@@ -161,7 +171,7 @@ export function FocusBar({
       </span>
 
       <span className="hidden text-[12px] text-dim sm:inline">
-        We count these four things, and you can see them the whole time.
+        We count these things, and you can see them the whole time.
       </span>
 
       <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
@@ -169,6 +179,17 @@ export function FocusBar({
         <Count label="Left full screen" value={counts.fullscreenExits} />
         <Count label="Copied out" value={counts.copyEvents} />
         <Count label="Seconds away" value={counts.secondsAway} />
+        {camera && (
+          <>
+            <Count label="Looked away" value={camera.lookAwayEvents} />
+            <Count label="Eyes off screen (s)" value={camera.lookAwaySeconds} />
+            <Count label="Camera blank (s)" value={camera.cameraBlankSeconds} />
+            <Count label="No face (s)" value={camera.faceMissingSeconds} />
+            {camera.multipleFaceEvents > 0 && (
+              <Count label="Extra people" value={camera.multipleFaceEvents} />
+            )}
+          </>
+        )}
       </dl>
 
       <button

@@ -341,19 +341,21 @@ From August 2026, using AI to screen candidates in the EU is legally "high-risk"
 
 **What we collect:** the work they produce, their messages to the AI colleague, their calibration answers, a text transcript of two short spoken answers, and simple counts like how many times they pasted.
 
-**What we never collect:** camera, screen recording, fingerprints, face data, location, device fingerprinting, or any guess about a person beyond the decisions visible in their work. Voice becomes text and nothing else. Guessing emotion from voice in hiring is banned under Article 5, and frankly it is a useless signal anyway.
+**What we never collect:** video, screen recording, fingerprints, face templates or identity, location, device fingerprinting, or any guess about a person beyond the decisions visible in their work. Voice becomes text and nothing else. Guessing emotion from a face or voice in hiring is banned under Article 5, and frankly it is a useless signal anyway.
 
-**Focus mode.** The test runs full screen and counts four things: switching tabs, leaving full screen, copying out of the test, and total seconds away. Three rules make this honest rather than creepy:
+**The camera.** The camera is on for the whole test, and every frame is analysed on the candidate's own device by a face-landmark model running in the browser (`components/challenge/camera-guard.tsx`). It watches for three things: a blank or covered picture, a missing or extra face, and eyes off the screen (from gaze blendshapes and head position). Each becomes seconds and counts, shown to the candidate live under their own preview. Not one frame is uploaded, stored or replayed; no identity, embedding or emotion is computed. The counts go on the record next to the focus-mode counts, with the same high thresholds and the same rule: numbers for a person to read, never a verdict.
+
+**Focus mode.** The test runs full screen and counts four things: switching tabs, leaving full screen, copying out of the test, and total seconds away. Three rules make this, and the camera, honest rather than creepy:
 
 1. **Every count is on screen while it is being counted.** No hidden monitoring.
-2. **Nothing is blocked.** You can leave whenever you want, and the test resumes where you were.
+2. **Two warnings, then it ends.** A problem that goes on (leaving the tab or full screen, no face, a second person, eyes away, a dark camera) shows a clear warning on screen. A second one says it is the last. A third ends the test on the spot and scores whatever was done. Nothing hidden, nothing silent.
 3. **The counts alone prove nothing.** Leaving the test only becomes evidence when most of the work also arrived by paste, because that pair is what fetching an answer looks like. One interruption is just a life happening, and the flags say counts rather than accusations.
 
-We deliberately stopped short of a webcam proctor. Watching people through their camera is the thing this product exists to replace, and adding it back would make every privacy claim above untrue.
+This is as far as we go towards a webcam *proctor*. Recording people and sending the video to a stranger is the thing this product exists to replace. Our camera never leaves the device, the candidate sees everything it produces, and the only automatic action the system ever takes is to stop the clock after two warnings. Even then it does not judge: the record says the test ended itself and why, and the work is scored as it stood.
 
 **What we store on our servers: nothing.** The calibration answer key travels encrypted, so the browser holds something it cannot read and cannot alter. The result travels as a signed credential the candidate owns.
 
-**How we check authorship without biometrics.** The question is not "is this the same face as last time". It is "did the person talking about this work actually make the decisions in it". Two things answer that: whether the work appeared from outside the session, and whether their spoken defence mentions things that only exist in *their* particular submission. No camera required.
+**How we check authorship without biometrics.** The question is not "is this the same face as last time". It is "did the person talking about this work actually make the decisions in it". Two things answer that: whether the work appeared from outside the session, and whether their spoken defence mentions things that only exist in *their* particular submission. The camera adds a third, weaker signal: that somebody was in the chair, looking at the screen, while it happened.
 
 **Freshness.** A credential that never expires stops meaning anything. Each skill fades on its own timer. AI judgment halves in 120 days because the tools change fast. Communication halves in 540 days because writing clearly does not go stale. A stale passport does not read like a fresh one.
 

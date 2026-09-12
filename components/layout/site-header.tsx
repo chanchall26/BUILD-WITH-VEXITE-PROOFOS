@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { Menu, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -11,12 +11,19 @@ import { cn } from "@/lib/utils";
 
 /** Plain labels. Somebody arriving cold should know where each one goes. */
 const LINKS = [
-  { href: "/challenge", label: "Take the test" },
-  { href: "/passport", label: "My results" },
-  { href: "/employer", label: "For employers" },
-  { href: "/verify", label: "Check a passport" },
   { href: "/engine", label: "How it works" },
+  { href: "/why", label: "Why different" },
+  { href: "/compliance", label: "Compliance" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/guide", label: "Guide" },
+  { href: "/verify", label: "Verify a credential" },
+  { href: "/employer", label: "For employers" },
 ];
+
+/** Shown in the drawer only; the bar keeps to what a visitor needs first. */
+const DRAWER_EXTRA = [{ href: "/passport", label: "My results" }];
+
+const CTA = { href: "/challenge", label: "Prove you're real" };
 
 /** Scroll position lives in the browser, so it is read as external state. */
 function subscribeToScroll(onChange: () => void) {
@@ -66,7 +73,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
             <Wordmark size={30} />
           </Link>
 
-          <nav className="ml-7 hidden items-center gap-1 lg:flex" aria-label="Main">
+          <nav className="ml-5 hidden items-center gap-0.5 xl:flex" aria-label="Main">
             {LINKS.map((l) => {
               const active = isActive(l.href);
               return (
@@ -75,7 +82,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "nav-link relative rounded-xl px-3.5 py-2 text-[14px] transition-colors",
+                    "nav-link relative whitespace-nowrap rounded-xl px-3 py-2 text-[13.5px] transition-colors",
                     active
                       ? "bg-wash text-signal"
                       : "text-muted hover:bg-raise hover:text-bright",
@@ -99,17 +106,18 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
             )}
             <ThemeToggle />
             <Link
-              href="/challenge"
+              href={CTA.href}
               className={buttonStyles({ size: "sm", className: "hidden sm:inline-flex" })}
             >
-              Take the test
+              <ShieldCheck size={15} aria-hidden="true" />
+              {CTA.label}
             </Link>
             <button
               type="button"
               onClick={() => setOpen(true)}
               aria-label="Open menu"
               aria-expanded={open}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-edge text-muted transition-colors hover:text-bright lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-edge text-muted transition-colors hover:text-bright xl:hidden"
             >
               <Menu size={17} />
             </button>
@@ -119,7 +127,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
 
       {/* Mobile drawer ---------------------------------------------------- */}
       {open && (
-        <div className="fixed inset-0 z-[60] lg:hidden">
+        <div className="fixed inset-0 z-[60] xl:hidden">
           <button
             className="absolute inset-0 bg-void/70 backdrop-blur-sm"
             onClick={() => setOpen(false)}
@@ -139,8 +147,8 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
               </button>
             </div>
 
-            <nav aria-label="Mobile" className="space-y-1">
-              {LINKS.map((l) => {
+            <nav aria-label="Mobile" className="grid gap-1 sm:grid-cols-2">
+              {[...LINKS, ...DRAWER_EXTRA].map((l) => {
                 const active = isActive(l.href);
                 return (
                   <Link
@@ -148,7 +156,7 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
                     href={l.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "nav-link flex items-center rounded-xl px-4 py-3.5 text-[15.5px] transition-colors",
+                      "nav-link flex items-center rounded-xl px-4 py-3 text-[15px] transition-colors",
                       active ? "bg-wash text-signal" : "text-bright hover:bg-raise",
                     )}
                   >
@@ -159,10 +167,11 @@ export function SiteHeader({ demoMode }: { demoMode: boolean }) {
             </nav>
 
             <Link
-              href="/challenge"
+              href={CTA.href}
               className={buttonStyles({ size: "lg", full: true, className: "mt-4" })}
             >
-              Take the test
+              <ShieldCheck size={17} aria-hidden="true" />
+              {CTA.label}
             </Link>
           </div>
         </div>

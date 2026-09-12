@@ -373,6 +373,22 @@ export function authorshipObservations(
     );
   }
 
+  // The test ending itself is different: the candidate was warned twice and
+  // the problem carried on, so it is recorded as evidence, not just a flag.
+  if (telemetry.autoEnded) {
+    out.push(
+      observe({
+        sessionId,
+        kind: "left_the_test",
+        detail: `The test ended itself after ${telemetry.warnings ?? 2} warnings (${STRIKE_LABEL[telemetry.endedBy ?? ""] ?? "repeated problems"}). The work below is what stood at that moment.`,
+        quote: `${away} switches away, ${exits} full-screen exits, last problem: ${telemetry.endedBy ?? "unknown"}`,
+        source: "artifact",
+        detector: "deterministic",
+        ref: "telemetry:strikes",
+      }),
+    );
+  }
+
   const fingerprints = distinctiveTokens(work, spec);
   const spoken = normalise(defence.map((d) => d.transcript).join(" "));
 
@@ -539,5 +555,50 @@ export function integrityFlags(
     flags.push(`Copied from the test ${telemetry.copyEvents} times.`);
   }
 
+  // Camera counts, same rule: numbers, never a verdict. A person looking at
+  // their notes or a lamp switching off is not cheating, and thresholds are
+  // set high enough that a normal test never trips them.
+  if (telemetry.cameraDenied) {
+    flags.push("The camera was refused, so no camera counts were recorded.");
+  }
+  const blank = Math.round(telemetry.cameraBlankSeconds ?? 0);
+  if (blank >= 30) {
+    flags.push(`Camera was off, blank or covered for ${blank} seconds.`);
+  }
+  const noFace = Math.round(telemetry.faceMissingSeconds ?? 0);
+  if (noFace >= 60) {
+    flags.push(`No face in view of the camera for ${noFace} seconds.`);
+  }
+  const lookAway = telemetry.lookAwayEvents ?? 0;
+  const lookAwaySeconds = Math.round(telemetry.lookAwaySeconds ?? 0);
+  if (lookAway >= 8 || lookAwaySeconds >= 90) {
+    flags.push(
+      `Eyes off the screen ${lookAway} times, ${lookAwaySeconds} seconds in total.`,
+    );
+  }
+  if ((telemetry.multipleFaceEvents ?? 0) >= 1) {
+    flags.push(`More than one person in view ${telemetry.multipleFaceEvents} time(s).`);
+  }
+
+  // The strike rule. This is the one place the record says the test itself
+  // stopped, because a reader needs to know the work is partial.
+  if (telemetry.autoEnded) {
+    flags.push(
+      `The test ended itself after ${telemetry.warnings ?? 2} warnings. Last problem: ${STRIKE_LABEL[telemetry.endedBy ?? ""] ?? telemetry.endedBy ?? "unknown"}. The work was scored as it stood.`,
+    );
+  } else if ((telemetry.warnings ?? 0) >= 1) {
+    flags.push(`Given ${telemetry.warnings} warning(s) during the test.`);
+  }
+
   return flags;
 }
+
+const STRIKE_LABEL: Record<string, string> = {
+  tab: "left the test tab",
+  fullscreen: "left full screen",
+  "no-face": "no face in view",
+  "many-faces": "more than one person in view",
+  "looking-away": "eyes off the screen",
+  blank: "camera dark or covered",
+  "camera-off": "camera switched off",
+};

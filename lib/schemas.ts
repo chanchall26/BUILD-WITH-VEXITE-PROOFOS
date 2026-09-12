@@ -321,6 +321,15 @@ export const zTelemetry = z.object({
   fullscreenExits: z.number().min(0).optional(),
   copyEvents: z.number().min(0).optional(),
   secondsAway: z.number().min(0).optional(),
+  cameraDenied: z.boolean().optional(),
+  cameraBlankSeconds: z.number().min(0).optional(),
+  faceMissingSeconds: z.number().min(0).optional(),
+  lookAwayEvents: z.number().min(0).optional(),
+  lookAwaySeconds: z.number().min(0).optional(),
+  multipleFaceEvents: z.number().min(0).optional(),
+  warnings: z.number().min(0).max(10).optional(),
+  autoEnded: z.boolean().optional(),
+  endedBy: z.string().max(40).optional(),
 });
 
 export const zCounterpartRequest = z.object({

@@ -297,12 +297,31 @@ export interface SessionTelemetry {
   /**
    * Test-integrity counts. Every one of these is shown to the candidate live,
    * while it is being counted. Monitoring somebody without telling them is how
-   * assessment loses people's trust, and none of these need a camera.
+   * assessment loses people's trust.
    */
   focusLosses?: number;
   fullscreenExits?: number;
   copyEvents?: number;
   secondsAway?: number;
+  /**
+   * Camera counts. The camera is on for the whole test and analysed on the
+   * candidate's device; no frame ever leaves it. What arrives here is seconds
+   * and counts, shown to the candidate live, for a person to read.
+   */
+  cameraDenied?: boolean;
+  cameraBlankSeconds?: number;
+  faceMissingSeconds?: number;
+  lookAwayEvents?: number;
+  lookAwaySeconds?: number;
+  multipleFaceEvents?: number;
+  /**
+   * The strike rule. Two warnings are shown for sustained problems (tab
+   * switch, left full screen, no face, second person, eyes away, camera
+   * dark). A third ends the test and it is scored as it stands.
+   */
+  warnings?: number;
+  autoEnded?: boolean;
+  endedBy?: string;
 }
 
 // ---------------------------------------------------------------- calibration

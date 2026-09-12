@@ -29,7 +29,7 @@ const STEPS = [
   {
     n: "3",
     title: "We write down what happened",
-    body: "Not opinions. Specific moments, quoted in your own words, each stamped with a time and a fingerprint so it cannot be changed later.",
+    body: "Not opinions. Specific moments, quoted in your own words, each stamped with a time and a fingerprint so it cannot be changed later. The camera adds only counts, never footage.",
   },
   {
     n: "4",
@@ -64,10 +64,11 @@ const MEASURED = [
   "Your answers in the trust quiz, and how confident you were",
   "Whether you can explain your own choices out loud",
   "Counts: pastes, edits, time taken, times you left the test",
+  "Camera counts, worked out on your device: seconds the picture was blank, no face in view, or eyes off the screen",
 ];
 
 const NOT_MEASURED = [
-  "Your face, your voice, or your screen",
+  "Your face as an identity, your voice, or your screen. Camera frames never leave your device.",
   "How you sound, your accent, or how fluent you are",
   "Your background, your education, or where you live",
   "Your mood, your personality, or anything guessed about you",

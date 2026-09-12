@@ -1,10 +1,10 @@
-import { ArrowRight, CameraOff, Code2, KeyRound, MonitorOff, Scale, UserCheck } from "lucide-react";
+import { ArrowRight, Code2, KeyRound, MonitorOff, Scale, ScanFace, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { Wordmark } from "@/components/mark";
 import { buttonStyles } from "@/components/ui/button";
 
 const PROMISES = [
-  { icon: CameraOff, label: "No camera" },
+  { icon: ScanFace, label: "Camera checked on-device, never stored" },
   { icon: MonitorOff, label: "No screen recording" },
   { icon: UserCheck, label: "You own your results" },
 ];
@@ -13,17 +13,21 @@ const GROUPS = [
   {
     title: "Product",
     links: [
-      { href: "/challenge", label: "Take the test" },
+      { href: "/challenge", label: "Prove you're real" },
       { href: "/passport", label: "My results" },
       { href: "/employer", label: "For employers" },
-      { href: "/verify", label: "Check a passport" },
+      { href: "/verify", label: "Verify a credential" },
     ],
   },
   {
     title: "Learn",
     links: [
       { href: "/engine", label: "How it works" },
+      { href: "/why", label: "Why different" },
+      { href: "/guide", label: "Guide" },
       { href: "/demo", label: "Guided tour" },
+      { href: "/faq", label: "FAQ" },
+      { href: "/compliance", label: "Compliance" },
     ],
   },
   {
@@ -81,7 +85,7 @@ export function SiteFooter() {
             </ul>
 
             <Link href="/challenge" className={buttonStyles({ size: "sm", className: "mt-6" })}>
-              Take the test
+              Prove you&apos;re real
               <ArrowRight size={15} aria-hidden="true" />
             </Link>
           </div>

@@ -270,6 +270,45 @@ test("leaving repeatedly AND pasting most of the work is evidence", () => {
   assert.equal(hit.polarity, -1);
 });
 
+test("a test that ended itself after two warnings is recorded as evidence", () => {
+  const observations = run({
+    work: "Half a plan, written before the test stopped.",
+    telemetry: { warnings: 2, autoEnded: true, endedBy: "many-faces", focusLosses: 1 },
+  });
+  const hit = observations.find((o) => o.kind === "left_the_test");
+  assert.ok(hit, "the strike rule firing is evidence, not just a flag");
+  assert.equal(hit.dimension, "authorship");
+  assert.match(hit.detail, /ended itself after 2 warnings/);
+  assert.match(hit.detail, /more than one person/);
+  assert.equal(hit.ref, "telemetry:strikes");
+});
+
+test("warnings that did not end the test are a flag, not evidence", () => {
+  const observations = run({
+    work: "Full work, finished normally.",
+    telemetry: { warnings: 1, autoEnded: false, focusLosses: 1 },
+  });
+  assert.equal(observations.filter((o) => o.kind === "left_the_test").length, 0);
+  const flags = integrityFlags(FIXTURE_CHALLENGE, "work", [], { ...TELEMETRY, warnings: 1 }, []);
+  assert.ok(flags.some((f) => /given 1 warning/i.test(f)));
+  assert.ok(!flags.some((f) => /ended itself/i.test(f)));
+});
+
+test("the auto-end flag names the reason in plain words and does not accuse", () => {
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "work",
+    [],
+    { ...TELEMETRY, warnings: 2, autoEnded: true, endedBy: "looking-away" },
+    [],
+  );
+  const flag = flags.find((f) => /ended itself/i.test(f));
+  assert.ok(flag);
+  assert.match(flag, /eyes off the screen/);
+  assert.match(flag, /scored as it stood/);
+  assert.ok(!/cheat|dishonest|fraud|suspicious|caught/i.test(flag));
+});
+
 test("integrity counts are reported as numbers, never as accusations", () => {
   const flags = integrityFlags(
     FIXTURE_CHALLENGE,
@@ -295,6 +334,60 @@ test("a session with no integrity counts produces no integrity flags", () => {
     flags.filter((f) => /switched away|full screen|copied/i.test(f)).length,
     0,
   );
+});
+
+// ---------------------------------------------------------------- camera
+
+test("camera counts are reported as numbers, never as accusations", () => {
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "some work",
+    [],
+    {
+      ...TELEMETRY,
+      cameraBlankSeconds: 45,
+      faceMissingSeconds: 80,
+      lookAwayEvents: 12,
+      lookAwaySeconds: 130,
+      multipleFaceEvents: 1,
+    },
+    [],
+  );
+  assert.ok(flags.some((f) => /blank or covered for 45 seconds/i.test(f)));
+  assert.ok(flags.some((f) => /no face in view .* 80 seconds/i.test(f)));
+  assert.ok(flags.some((f) => /eyes off the screen 12 times/i.test(f)));
+  assert.ok(flags.some((f) => /more than one person/i.test(f)));
+  for (const flag of flags) {
+    assert.ok(
+      !/cheat|dishonest|fraud|suspicious|caught|proctor/i.test(flag),
+      `flag reads as an accusation: ${flag}`,
+    );
+  }
+});
+
+test("a normal amount of looking away is below the camera threshold", () => {
+  // People glance at notes, a keyboard, a second monitor. That is not a flag.
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "some work",
+    [],
+    { ...TELEMETRY, lookAwayEvents: 5, lookAwaySeconds: 40, cameraBlankSeconds: 3 },
+    [],
+  );
+  assert.equal(flags.filter((f) => /eyes off|blank|camera/i.test(f)).length, 0);
+});
+
+test("a refused camera is stated, not punished", () => {
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "some work",
+    [],
+    { ...TELEMETRY, cameraDenied: true },
+    [],
+  );
+  const hit = flags.find((f) => /camera was refused/i.test(f));
+  assert.ok(hit);
+  assert.ok(!/fail|reject/i.test(hit));
 });
 
 test("one interruption is below the threshold", () => {
