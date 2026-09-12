@@ -43,9 +43,9 @@ export function MarketPulse() {
       <div className="flex flex-wrap items-center gap-2">
         <span className="eyebrow">Why this exists</span>
         {live && (
-          <span className="chip border-data/30 text-data">
+          <span className="chip border-data/40 text-data">
             <span className="live-dot h-1.5 w-1.5 rounded-full bg-data" />
-            grounded via Google Search
+            looked up just now
           </span>
         )}
       </div>

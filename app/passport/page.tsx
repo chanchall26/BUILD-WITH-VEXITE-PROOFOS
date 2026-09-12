@@ -172,8 +172,8 @@ export default function PassportPage() {
         <div className="space-y-6">
           {/* Proof graph ------------------------------------------------- */}
           <Panel
-            title="Proof graph"
-            note="Select any node. Every number resolves to the observations that produced it."
+            title="Where your scores come from"
+            note="Click anything. Every number opens up into the exact moments behind it."
           >
             <ProofGraph
               trustHealth={live}
@@ -186,7 +186,7 @@ export default function PassportPage() {
 
           {/* Calibration ------------------------------------------------- */}
           {result.calibration && result.calibration.answered > 0 && (
-            <Panel title="Trust calibration">
+            <Panel title="Your trust quiz">
               <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
                 <CalibrationPlot result={result.calibration} />
                 <div>
@@ -254,8 +254,8 @@ export default function PassportPage() {
 
           {/* Coaching ---------------------------------------------------- */}
           <Panel
-            title="What to do about it"
-            note="Every candidate gets this, whichever way the decision goes."
+            title="How to get better"
+            note="Everyone gets this, whatever the company decides."
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -302,10 +302,10 @@ export default function PassportPage() {
             <AjqRadar facets={result.profile.ajq.facets} />
           </Panel>
 
-          <Panel title="Freshness">
+          <Panel title="How fresh this is">
             <p className="text-[12.5px] leading-relaxed text-muted">
-              Evidence decays. Each capability has its own half-life, because knowing how
-              someone handled AI tooling eighteen months ago says very little about today.
+              Proof fades. Each skill fades at its own speed, because how you handled AI
+              tools eighteen months ago says very little about today.
             </p>
             <ul className="mt-4 space-y-3">
               {passport.claims.map((c) => {
@@ -331,10 +331,10 @@ export default function PassportPage() {
           </Panel>
 
           {unproven.length > 0 && (
-            <Panel title="Not yet proven">
+            <Panel title="Not shown yet">
               <p className="text-[12.5px] leading-relaxed text-muted">
-                No evidence was recorded for these, so no number is claimed. Each one is a
-                twenty-minute exercise away from being on the record.
+                Nothing in this session showed these, so we do not give them a number. Each
+                one is a twenty-minute exercise away from being on your record.
               </p>
               <ul className="mt-3 space-y-2">
                 {unproven.map((c) => (
@@ -352,7 +352,7 @@ export default function PassportPage() {
             </Panel>
           )}
 
-          <Panel title="Your credential">
+          <Panel title="Share your results">
             <DisclosureControl
               passport={passport}
               onPresent={(p, d) => {
@@ -403,7 +403,7 @@ export default function PassportPage() {
                 Download
               </button>
               <Link href="/verify" className="btn btn-quiet">
-                Verify it →
+                Check it →
               </Link>
             </div>
 
@@ -430,12 +430,11 @@ export default function PassportPage() {
                 setRevoked(!revoked);
               }}
             >
-              {revoked ? "Restore this credential" : "Revoke this credential"}
+              {revoked ? "Put these results back" : "Withdraw these results"}
             </button>
             <p className="mt-1 text-[11px] leading-relaxed text-dim">
-              Revoking flips one bit in the public status list. The signature stays valid —
-              that is how signatures work — and every verifier that checks the list sees it
-              withdrawn.
+              Withdrawing does not delete copies people already have. It flips one bit on a
+              public list, so anyone who checks is told these results were pulled.
             </p>
           </Panel>
         </div>

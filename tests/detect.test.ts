@@ -247,6 +247,67 @@ test("integrity flags state facts rather than accusations", () => {
   }
 });
 
+// ---------------------------------------------------------------- focus
+
+test("leaving the test is not evidence on its own", () => {
+  // People get interrupted. On its own that proves nothing, and a system that
+  // treats it as cheating punishes anyone with a life.
+  const observations = run({
+    work: "I rolled back the deploy after checking the per-endpoint numbers myself.",
+    telemetry: { focusLosses: 6, secondsAway: 200, pastedChars: 20, typedChars: 900 },
+  });
+  assert.equal(observations.filter((o) => o.kind === "left_the_test").length, 0);
+});
+
+test("leaving repeatedly AND pasting most of the work is evidence", () => {
+  const observations = run({
+    work: "x".repeat(400),
+    telemetry: { focusLosses: 4, secondsAway: 180, pastedChars: 900, typedChars: 120 },
+  });
+  const hit = observations.find((o) => o.kind === "left_the_test");
+  assert.ok(hit, "the pair of signals is what matters, not either alone");
+  assert.equal(hit.dimension, "authorship");
+  assert.equal(hit.polarity, -1);
+});
+
+test("integrity counts are reported as numbers, never as accusations", () => {
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "some work",
+    [],
+    { ...TELEMETRY, focusLosses: 5, fullscreenExits: 3, copyEvents: 4, secondsAway: 145 },
+    [],
+  );
+  assert.ok(flags.some((f) => /switched away/i.test(f)));
+  assert.ok(flags.some((f) => /full screen/i.test(f)));
+  assert.ok(flags.some((f) => /copied/i.test(f)));
+  for (const flag of flags) {
+    assert.ok(
+      !/cheat|dishonest|fraud|suspicious|caught/i.test(flag),
+      `flag reads as an accusation: ${flag}`,
+    );
+  }
+});
+
+test("a session with no integrity counts produces no integrity flags", () => {
+  const flags = integrityFlags(FIXTURE_CHALLENGE, "some work", [], TELEMETRY, []);
+  assert.equal(
+    flags.filter((f) => /switched away|full screen|copied/i.test(f)).length,
+    0,
+  );
+});
+
+test("one interruption is below the threshold", () => {
+  const flags = integrityFlags(
+    FIXTURE_CHALLENGE,
+    "some work",
+    [],
+    { ...TELEMETRY, focusLosses: 2, fullscreenExits: 1, copyEvents: 1 },
+    [],
+  );
+  assert.equal(flags.length, 0, "normal behaviour should be silent");
+});
+
 test("finishing implausibly fast is noted", () => {
   const flags = integrityFlags(
     FIXTURE_CHALLENGE,

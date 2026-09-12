@@ -89,10 +89,10 @@ export function CalibrationStep({
   if (!items) {
     return (
       <div className="panel p-10 text-center">
-        <p className="thinking text-[15px]">Gemini is writing your calibration set…</p>
+        <p className="thinking text-[15px]">Writing your ten questions…</p>
         <p className="mt-2 text-[13px] text-dim">
-          Ten outputs from the same world you just worked in. The answer key stays on the
-          server.
+          They come from the same world you just worked in. The answers stay on our server,
+          so they are not sitting in your browser.
         </p>
       </div>
     );
@@ -103,19 +103,18 @@ export function CalibrationStep({
   return (
     <div>
       <div className="panel-raised p-6 sm:p-7">
-        <span className="eyebrow">Trust calibration</span>
+        <span className="eyebrow">Trust quiz · about 4 minutes</span>
         <h2 className="headline mt-2 text-[26px]">
-          Ten things an AI told someone. Which would you act on?
+          Ten things an AI said. Which would you act on?
         </h2>
-        <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted">
-          Say what each output is, and how far you would act on it before checking. Being
-          right is half of it. The other half is whether your confidence matched what the
-          output actually deserved, which is the thing that decides whether you are safe to
-          leave alone with a model.
+        <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-muted">
+          For each one, say what it is, and how far you would act on it before checking.
+          Getting the label right is only half. The other half is whether your confidence
+          matched what it actually deserved.
         </p>
         <p className="mt-3 text-[12.5px] text-dim">
-          Answer as many as you like and move on. Unanswered items are excluded rather than
-          counted against you.
+          Answer as many as you want, then move on. Skipped ones are left out, not marked
+          wrong.
         </p>
       </div>
 
@@ -162,7 +161,7 @@ export function CalibrationStep({
                   className="flex items-center gap-3 text-[12.5px] text-muted"
                   htmlFor={`trust-${item.id}`}
                 >
-                  <span className="w-[112px] shrink-0">How far you&apos;d act on it</span>
+                  <span className="w-[112px] shrink-0">Would you act on it?</span>
                   <input
                     id={`trust-${item.id}`}
                     type="range"
@@ -181,7 +180,7 @@ export function CalibrationStep({
                   <span className="numeral w-9 text-right text-bright">{current.trust}</span>
                 </label>
                 <p className="mt-1 pl-[124px] text-[11px] text-dim">
-                  0 means you would verify everything first. 100 means you would ship it.
+                  0 means check everything first. 100 means use it as it is.
                 </p>
               </div>
             </li>

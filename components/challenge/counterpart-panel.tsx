@@ -109,7 +109,7 @@ export function CounterpartPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-edge-soft px-4 py-2.5">
         <span className="h-2 w-2 rounded-full bg-signal" />
-        <span className="text-[12.5px] font-medium">AI counterpart</span>
+        <span className="text-[12.5px] font-medium">AI teammate</span>
         <span className="ml-auto text-[11px] text-dim">
           {asked} {asked === 1 ? "message" : "messages"}
         </span>
@@ -117,12 +117,14 @@ export function CounterpartPanel({
 
       <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {turns.length === 0 && (
-          <div className="rounded-lg border border-edge-soft bg-void p-4 text-[13px] leading-relaxed text-muted">
-            <p className="mb-2 text-bright">Treat them as a colleague, not a search box.</p>
+          <div className="rounded-lg border border-edge-soft bg-deep p-4 text-[13px] leading-relaxed text-muted">
+            <p className="mb-2 font-medium text-bright">
+              Talk to them like a colleague, not a search box.
+            </p>
             <p>
-              They have tools and they will use them. Ask what they looked at. Push back
-              when the reasoning does not hold. Working alone is also a legitimate choice,
-              and the record will say so rather than penalise it.
+              They can look things up, so ask them what they checked. If the reasoning does
+              not add up, say so. You can also ignore them completely and do it yourself.
+              That is a real choice, and your record will say that is what you did.
             </p>
           </div>
         )}
@@ -142,7 +144,7 @@ export function CounterpartPanel({
                 {turn.toolCalls && turn.toolCalls.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 border-b border-edge-soft px-3 py-2">
                     <span className="font-mono text-[10px] uppercase tracking-wider text-dim">
-                      consulted
+                      they opened
                     </span>
                     {turn.toolCalls.map((c, j) => (
                       <span key={j} className="chip border-data/30 text-data">
@@ -164,7 +166,7 @@ export function CounterpartPanel({
         ))}
 
         {consulting && (
-          <p className="thinking text-[12.5px]">checking the data before answering…</p>
+          <p className="thinking text-[12.5px]">looking things up before answering…</p>
         )}
       </div>
 
@@ -180,20 +182,20 @@ export function CounterpartPanel({
               }
             }}
             rows={2}
-            placeholder="Ask, challenge, or redirect… (Ctrl+Enter to send)"
-            aria-label="Message the counterpart"
+            placeholder="Ask a question, or push back… (Ctrl+Enter to send)"
+            aria-label="Message your AI teammate"
             className="field resize-none text-[13.5px]"
           />
           <button
             onClick={() => void send()}
             disabled={busy || !draft.trim()}
-            className="btn btn-ghost h-[42px]"
+            className="btn btn-primary h-[46px]"
           >
             {busy ? "…" : "Send"}
           </button>
         </div>
         <p className="mt-2 text-[11px] text-dim">
-          Tools available to them: {challenge.tools.map((t) => t.name).join(", ") || "none"}
+          They can open: {challenge.tools.map((t) => t.name).join(", ") || "nothing"}
         </p>
       </div>
     </div>

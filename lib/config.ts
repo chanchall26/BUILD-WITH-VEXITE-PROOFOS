@@ -8,9 +8,9 @@
 export const APP = {
   name: "PROOFOS",
   full: "Proof Operating System",
-  tagline: "The AI-native trust layer for hiring",
+  tagline: "Proof of what you can actually do",
   pitch:
-    "The résumé says what you claim. PROOFOS shows what you can prove: what you can do, how you handle AI, and whether that proof still holds today.",
+    "Anyone can write a perfect CV now. PROOFOS gives people a short, real task and an AI teammate that is sometimes wrong, then shows an employer exactly what happened.",
 } as const;
 
 /**

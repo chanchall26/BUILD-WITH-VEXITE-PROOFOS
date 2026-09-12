@@ -353,6 +353,26 @@ export function authorshipObservations(
     );
   }
 
+  // Leaving the test is not cheating on its own. People get interrupted. It
+  // becomes evidence only when it happens repeatedly AND a lot of the work
+  // arrived by paste, because that pair is what "went and fetched an answer"
+  // actually looks like.
+  const away = telemetry.focusLosses ?? 0;
+  const exits = telemetry.fullscreenExits ?? 0;
+  if (away >= 3 && pasteRatio > 0.6) {
+    out.push(
+      observe({
+        sessionId,
+        kind: "left_the_test",
+        detail: `Left the test ${away} times while ${Math.round(pasteRatio * 100)}% of the work arrived by paste.`,
+        quote: `${away} switches away, ${exits} full-screen exits, ${Math.round((telemetry.secondsAway ?? 0))}s off-task`,
+        source: "artifact",
+        detector: "deterministic",
+        ref: "telemetry:focus",
+      }),
+    );
+  }
+
   const fingerprints = distinctiveTokens(work, spec);
   const spoken = normalise(defence.map((d) => d.transcript).join(" "));
 
@@ -501,6 +521,22 @@ export function integrityFlags(
     flags.push(
       `Finished in ${minutes.toFixed(1)} minutes against a ${spec.estimatedMinutes}-minute task.`,
     );
+  }
+
+  // Stated as counts, for a human to weigh. Being interrupted is not cheating,
+  // and the record should not pretend to know the difference.
+  const away = telemetry.focusLosses ?? 0;
+  const secondsAway = Math.round(telemetry.secondsAway ?? 0);
+  if (away >= 3) {
+    flags.push(
+      `Switched away from the test ${away} times, ${secondsAway} seconds off-task in total.`,
+    );
+  }
+  if ((telemetry.fullscreenExits ?? 0) >= 2) {
+    flags.push(`Left full screen ${telemetry.fullscreenExits} times.`);
+  }
+  if ((telemetry.copyEvents ?? 0) >= 3) {
+    flags.push(`Copied from the test ${telemetry.copyEvents} times.`);
   }
 
   return flags;

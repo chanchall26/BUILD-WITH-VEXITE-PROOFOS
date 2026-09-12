@@ -154,11 +154,9 @@ export function DefenceStep({
   if (!questions) {
     return (
       <div className="panel p-10 text-center">
-        <p className="thinking text-[15px]">
-          Gemini is reading what you built and writing your questions…
-        </p>
+        <p className="thinking text-[15px]">Reading your work and writing your questions…</p>
         <p className="mt-2 text-[13px] text-dim">
-          They come from your submission, so they are different for everyone.
+          They are built from what you actually wrote, so everyone gets different ones.
         </p>
       </div>
     );
@@ -179,7 +177,7 @@ export function DefenceStep({
     <div className="panel-raised p-6 sm:p-8">
       <div className="flex flex-wrap items-center gap-3">
         <span className="eyebrow">
-          Spoken defence · {index + 1} of {questions.length}
+          Explain your choices · {index + 1} of {questions.length}
         </span>
         {audioUrl && (
           <audio controls src={audioUrl} className="ml-auto h-8" aria-label="Hear the question">
@@ -190,8 +188,8 @@ export function DefenceStep({
 
       <p className="mt-4 text-[19px] leading-snug tracking-[-0.015em]">{current.question}</p>
       <p className="mt-3 text-[13px] leading-relaxed text-dim">
-        About forty-five seconds, the way you would say it to a colleague. The recording is
-        transcribed and then discarded. Nothing about your voice is measured.
+        About 45 seconds, said the way you would say it to a colleague. We turn it into text
+        and delete the recording. Nothing about how you sound is measured or kept.
       </p>
 
       {notice && (
@@ -212,7 +210,7 @@ export function DefenceStep({
             </button>
           ) : (
             <button
-              className="btn btn-ghost border-alert/50 text-alert"
+              className="btn btn-ghost recording border-alert/50 text-alert"
               onClick={() => void stopRecording()}
             >
               <span className="live-dot mr-1 inline-block h-2 w-2 rounded-full bg-alert" />
@@ -220,7 +218,7 @@ export function DefenceStep({
             </button>
           )}
           <button className="btn btn-quiet" onClick={() => setMode("text")} disabled={recording}>
-            Type it instead
+            I&apos;d rather type it
           </button>
         </div>
       ) : (

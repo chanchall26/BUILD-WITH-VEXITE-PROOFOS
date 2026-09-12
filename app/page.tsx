@@ -15,46 +15,46 @@ const SNAPSHOT_AT = Date.parse("2026-09-12T12:00:00.000Z");
 const LAYERS = [
   {
     n: "01",
-    title: "A role becomes a proof challenge",
-    who: "Employer · 60 seconds",
-    body: "Drop in the posting as text, a PDF, or a photograph of the hiring meeting whiteboard. Gemini says which six capabilities the role actually depends on and how heavily, then designs a twelve-minute simulation from that world, with the tools, the evidence, and the defects built in.",
+    title: "A job advert becomes a real task",
+    who: "Employer · 1 minute",
+    body: "Paste the advert, upload the PDF, or photograph the whiteboard. We work out which six skills the job really needs, then build a twelve-minute task from that world, with real data, working tools, and four hidden mistakes.",
   },
   {
     n: "02",
-    title: "The candidate manages an AI coworker",
+    title: "The candidate works with an AI teammate",
     who: "Candidate · 12 minutes",
-    body: "Not an assistant with a bug. A colleague that consults real tools, forms a view, and is wrong the way capable colleagues are wrong: confident, well-argued, and reading the wrong number. It asserts what the data does not support, overstates its certainty, hides a defect inside clean work, and quietly moves the goalposts.",
+    body: "Not a chatbot. A teammate that looks things up, forms an opinion, and says it with confidence. Four times it gets it wrong the way a clever, fast colleague gets things wrong: it claims more than the data shows, it is sure about the wrong fix, it hides a small error inside good work, and it quietly changes the goalposts.",
   },
   {
     n: "03",
-    title: "Then their confidence is measured against reality",
+    title: "Then we check their sense of when to trust AI",
     who: "Candidate · 4 minutes",
-    body: "Ten AI outputs to judge. Some are right and hedged, some are wrong and certain, some would cause real damage if acted on. What is scored is not accuracy. It is whether their trust tracked what each output actually deserved.",
+    body: "Ten things an AI said. Some are right but cautious. Some are wrong but confident. Two would cause real damage if you acted on them. We are not marking right and wrong. We are checking whether their confidence matched reality.",
   },
   {
     n: "04",
-    title: "Everything becomes evidence, then a passport they own",
-    who: "Both sides · immediately",
-    body: "Every score decomposes into the observations behind it, each one quoted and hashed. The passport is signed, portable, selectively disclosable, revocable, and it decays, because a judgment about AI tooling from eighteen months ago says very little about today's.",
+    title: "It all becomes proof they own",
+    who: "Both sides · straight away",
+    body: "Every score opens up into the exact moments behind it, quoted in their own words. The result is signed, portable, and reusable at the next company. They choose what to share, it can be withdrawn, and it fades over time because skills go out of date.",
   },
 ];
 
 const PRINCIPLES = [
   {
-    title: "Evidence is stored. Scores are derived.",
-    body: "Nothing is saved as a number. A capability score is a pure function of the observations behind it, so it can be recomputed, audited, and argued with line by line. Dispute a 71 and you get the fourteen observations that made it.",
+    title: "We keep the proof, not the score",
+    body: "No score is ever saved. Every number is worked out fresh from what actually happened. Ask why you got 71 and you get the fourteen specific things you did, quoted word for word. Run it again and you get 71 again.",
   },
   {
-    title: "No evidence, no number.",
-    body: "A capability nobody has demonstrated reads as unproven, not as 50. Half the harm in assessment comes from confident numbers built on nothing, and the honest answer to an absent signal is to say it is absent.",
+    title: "No proof means no number",
+    body: "If a skill was never shown, it says unproven. It does not say 50. Most of the harm assessment tools do comes from confident-looking numbers built on nothing at all.",
   },
   {
-    title: "The model never scores.",
-    body: "Gemini designs the simulation, plays the coworker, and extracts evidence by quoting it. Whether a planted defect reached the finished work is string comparison. Calibration is arithmetic. Every number a candidate could dispute is computed, not judged.",
+    title: "The AI never decides your score",
+    body: "The AI builds the task, plays the teammate, and points at things you said. That is all. Whether its hidden mistake ended up in your work is decided by comparing text. The trust quiz is marked by arithmetic. Anything you could argue with is calculated, not judged.",
   },
   {
-    title: "Coverage, never a verdict.",
-    body: "Against a role, PROOFOS reports that someone has verified evidence for 82% of what it asks for and names the rest. There is no threshold anywhere in the system that turns that into a recommendation. A human decides.",
+    title: "We report coverage, never a verdict",
+    body: "We tell an employer you have proof for 82% of what the job needs, and name the other 18%. There is no line anywhere in our code that turns that into hire or reject. A person decides that.",
   },
 ];
 
@@ -68,7 +68,7 @@ export default function Home() {
         <div className="relative mx-auto max-w-6xl px-5 pb-14 pt-16 sm:pt-24">
           <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
             <div className="rise">
-              <span className="eyebrow">Proof Operating System · built on Google Gemini</span>
+              <span className="eyebrow">Proof of skill for the AI workplace</span>
               <h1 className="display mt-4">
                 The résumé says
                 <br />
@@ -79,21 +79,21 @@ export default function Home() {
                 <span className="text-signal">you can prove.</span>
               </h1>
               <p className="subhead mt-6 max-w-xl">
-                PROOFOS is the trust layer for hiring in an AI-native workplace. Not who a
-                candidate is. What they can actually do, how well they supervise a machine
-                that is sometimes wrong, and whether that proof still holds today.
+                Anyone can write a perfect CV now. PROOFOS gives people a short, real task
+                and an AI teammate that is sometimes wrong, then shows an employer exactly
+                what happened. Not who you are. What you can actually do.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link href="/challenge" className="btn btn-primary">
-                  Build my proof passport
+                <Link href="/challenge" className="btn btn-primary btn-lg">
+                  Take the test
                 </Link>
-                <Link href="/employer" className="btn btn-ghost">
-                  Verify a candidate
-                </Link>
-                <Link href="/demo" className="btn btn-quiet">
-                  Three-minute demo path →
+                <Link href="/employer" className="btn btn-ghost btn-lg">
+                  I&apos;m hiring
                 </Link>
               </div>
+              <p className="mt-3 text-[12.5px] text-dim">
+                Takes about 16 minutes. Nothing to install. No camera.
+              </p>
             </div>
 
             {/* What comes out of it, shown rather than described. */}
@@ -117,26 +117,24 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-5 py-16">
           <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
             <div>
-              <span className="eyebrow">The shift</span>
+              <span className="eyebrow">Why now</span>
               <h2 className="headline mt-3 max-w-lg">
-                Identity verification is solving last year&apos;s problem.
+                Checking someone is real no longer tells you anything useful.
               </h2>
               <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-muted">
                 <p>
-                  A wave of products now checks whether the person on the call is real. That
-                  matters, and it is rapidly becoming a commodity feature inside the video
-                  tools you already pay for.
+                  Lots of new tools check whether the person on the video call is a real
+                  human. Fair enough. But video apps are adding that themselves, for free.
                 </p>
                 <p>
-                  It also answers a question that no longer decides anything. Knowing a
-                  genuine human sat in the chair tells you nothing about whether they can do
-                  the work, and in 2026 the work means working next to a fluent, confident,
-                  occasionally wrong machine.
+                  More importantly, it answers the wrong question. Knowing a real person sat
+                  in the chair tells you nothing about whether they can do the job.
                 </p>
                 <p className="text-bright">
-                  Employers have stopped asking whether candidates use AI. They have started
-                  asking whether candidates can be trusted to supervise it. Nobody is
-                  measuring that.
+                  The job now means sitting next to an AI all day. It is fast, it sounds
+                  certain, and sometimes it is completely wrong. Employers have stopped
+                  asking &ldquo;do you use AI?&rdquo; and started asking &ldquo;can I trust
+                  you to catch it when it is wrong?&rdquo; Nobody measures that. We do.
                 </p>
               </div>
             </div>
@@ -144,29 +142,29 @@ export default function Home() {
             <div className="panel-raised overflow-hidden">
               <div className="grid grid-cols-2 divide-x divide-[--color-edge-soft]">
                 <div className="p-5">
-                  <span className="eyebrow">What exists</span>
+                  <span className="eyebrow">Tests today</span>
                   <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-muted">
-                    <li>One candidate, one check, one credential.</li>
-                    <li>Proves a human was present.</li>
-                    <li>Expires never, or expires arbitrarily.</li>
-                    <li>Owned by the platform, per employer.</li>
-                    <li>Produces a score.</li>
+                    <li>Do it again at every company.</li>
+                    <li>Proves a human was there.</li>
+                    <li>Never expires, or expires randomly.</li>
+                    <li>The company keeps it. You do not.</li>
+                    <li>Gives you a score and no reason.</li>
                   </ul>
                 </div>
-                <div className="bg-wash/40 p-5">
+                <div className="bg-wash p-5">
                   <span className="eyebrow text-signal">PROOFOS</span>
-                  <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-bright">
-                    <li>One passport, many capabilities, reused everywhere.</li>
-                    <li>Proves what they did, and how they handled AI doing it.</li>
-                    <li>Decays on a half-life per capability.</li>
-                    <li>Owned by the candidate, disclosed claim by claim.</li>
-                    <li>Produces evidence. The score is derived from it.</li>
+                  <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed">
+                    <li>Do it once. Reuse it anywhere.</li>
+                    <li>Proves what you did, and how you handled AI.</li>
+                    <li>Fades over time, skill by skill.</li>
+                    <li>You keep it. You choose what to share.</li>
+                    <li>Shows the proof. The score comes from it.</li>
                   </ul>
                 </div>
               </div>
               <div className="border-t border-edge-soft px-5 py-4 text-[12.5px] leading-relaxed text-dim">
-                The move is from identity verification to employability verification
-                infrastructure. One is a gate. The other is an operating system.
+                One is a gate you walk through and forget. The other is something you own
+                and keep building on.
               </div>
             </div>
           </div>
@@ -176,14 +174,14 @@ export default function Home() {
       {/* AJQ -------------------------------------------------------------- */}
       <section className="border-b border-edge-soft">
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <span className="eyebrow">The new measurement</span>
+          <span className="eyebrow">The new score</span>
           <h2 className="headline mt-3 max-w-2xl">
-            AI Judgment Quotient. Not how well you prompt — how well you supervise.
+            Not how well you prompt. How well you catch it when it is wrong.
           </h2>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Prompting is a skill with a shelf life measured in model releases. Knowing when
-            the answer in front of you is wrong is not. Six facets, each with its own
-            evidence trail, each scored only where evidence exists.
+            Being good at prompts stops mattering every time a new model comes out. Knowing
+            when the answer in front of you is wrong never stops mattering. We measure six
+            things, and each one only gets a score if you actually showed it.
           </p>
 
           <div className="mt-9 grid items-start gap-8 lg:grid-cols-[auto_1fr] lg:gap-12">
@@ -221,8 +219,8 @@ export default function Home() {
       {/* How it works ----------------------------------------------------- */}
       <section className="border-b border-edge-soft">
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <span className="eyebrow">How it runs</span>
-          <h2 className="headline mt-3 max-w-xl">Four layers, about sixteen minutes.</h2>
+          <span className="eyebrow">Step by step</span>
+          <h2 className="headline mt-3 max-w-xl">Four steps, about sixteen minutes.</h2>
           <ol className="mt-10 grid gap-px overflow-hidden rounded-xl border border-edge-soft bg-edge-soft md:grid-cols-2">
             {LAYERS.map((l) => (
               <li key={l.n} className="bg-slab p-6 sm:p-7">
@@ -243,26 +241,23 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-5 py-16">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
             <div>
-              <span className="eyebrow">The mechanism</span>
-              <h2 className="headline mt-3">
-                A coworker who looked at the wrong number.
-              </h2>
+              <span className="eyebrow">See it happen</span>
+              <h2 className="headline mt-3">A teammate that read the wrong chart.</h2>
               <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-muted">
                 <p>
-                  The counterpart has tools and it uses them. In the seeded scenario it
-                  checks the database metrics, sees CPU at 82%, and reaches a confident
-                  conclusion. It does not check the per-endpoint latency, which would show
-                  that exactly one route regressed and everything else is flat.
+                  Your AI teammate has tools and it uses them. Here it checks the database
+                  chart, sees the CPU at 82%, and decides. It never opens the chart that
+                  breaks the numbers down by page, which would show that only one page got
+                  slower and everything else is fine.
                 </p>
                 <p>
-                  The interface shows the candidate which tools the counterpart consulted.
-                  The gap between what it read and what it should have read is sitting right
-                  there, in the transcript, for anyone who looks.
+                  You can see exactly which tools it opened. The gap between what it read
+                  and what it should have read is sitting right there, if you look.
                 </p>
                 <p className="text-bright">
-                  Whether the defect reached the finished work is settled by string
-                  comparison against a marker, not by a second opinion from a model. That is
-                  what makes the finding survive a disagreement.
+                  Copy its answer and that shows up in your record. We check by comparing
+                  the text, not by asking another AI, so the finding holds up if you
+                  disagree with it.
                 </p>
               </div>
             </div>
@@ -270,8 +265,8 @@ export default function Home() {
             <div className="panel overflow-hidden">
               <div className="flex flex-wrap items-center gap-2 border-b border-edge-soft px-4 py-2.5">
                 <span className="h-2 w-2 rounded-full bg-signal" />
-                <span className="text-[12px] font-medium text-muted">AI counterpart</span>
-                <span className="chip ml-auto">consulted check_db_metrics</span>
+                <span className="text-[12px] font-medium text-muted">AI teammate</span>
+                <span className="chip ml-auto">opened: database chart</span>
               </div>
               <div className="space-y-3 p-5 text-[13.5px] leading-relaxed">
                 <p className="text-muted">
@@ -291,9 +286,10 @@ export default function Home() {
                 </p>
               </div>
               <div className="border-t border-edge-soft bg-raise px-5 py-3.5 text-[12.5px] leading-relaxed text-dim">
-                Nearly every request touches the database, so the 95% figure carries no
-                information at all. The endpoint numbers it did not open show one route at
-                2140ms and the other three unchanged.
+                Almost every request touches the database, so &ldquo;95% of slow ones touch
+                the database&rdquo; tells you nothing. It is like saying 95% of car crashes
+                involve cars. The chart it skipped shows one page at 2140ms and the other
+                three completely normal.
               </div>
             </div>
           </div>
@@ -303,8 +299,8 @@ export default function Home() {
       {/* Principles ------------------------------------------------------- */}
       <section className="border-b border-edge-soft">
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <span className="eyebrow">What it refuses to do</span>
-          <h2 className="headline mt-3 max-w-xl">Four commitments, enforced in code.</h2>
+          <span className="eyebrow">Our promises</span>
+          <h2 className="headline mt-3 max-w-xl">Four rules we do not break.</h2>
           <div className="mt-9 grid gap-5 md:grid-cols-2">
             {PRINCIPLES.map((p) => (
               <div key={p.title} className="panel p-6">
@@ -316,9 +312,10 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-6 max-w-3xl text-[14px] leading-relaxed text-dim">
-            No camera. No screen recording. No browser lockdown. No voice analysis. The
-            spoken defence is transcribed and the audio discarded, because what someone
-            says about their own decisions is evidence and how they sound is not.
+            No camera. No screen recording. Nothing judged about how you sound. The test
+            does run full screen and counts if you switch tabs, but you can see those
+            counts the whole time and leaving is never blocked. What you say about your own
+            decisions is proof. How you say it is nobody&apos;s business.
           </p>
         </div>
       </section>
@@ -329,22 +326,22 @@ export default function Home() {
           <div className="panel-raised relative overflow-hidden p-8 sm:p-12">
             <div className="signal-rule absolute inset-x-0 top-0 h-px" />
             <h2 className="headline max-w-2xl">
-              Sixteen minutes, and you will learn something about how you handle AI.
+              Give it sixteen minutes. You will learn something about yourself.
             </h2>
             <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">
-              The seeded scenario is a production API that started failing after a deploy.
-              The counterpart will be confidently wrong four times. Everything runs without
-              an API key, from deterministic fixtures, so it works on any machine.
+              The ready-made task is a payment system that started breaking after an update.
+              Your AI teammate will be confidently wrong four times. You get your full
+              results either way, and you keep them.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/challenge" className="btn btn-primary">
-                Start the challenge
+              <Link href="/challenge" className="btn btn-primary btn-lg">
+                Take the test
               </Link>
-              <Link href="/employer" className="btn btn-ghost">
-                See the employer side
+              <Link href="/employer" className="btn btn-ghost btn-lg">
+                See the employer view
               </Link>
-              <Link href="/engine" className="btn btn-quiet">
-                Where Gemini does the work →
+              <Link href="/demo" className="btn btn-quiet">
+                Take the guided tour →
               </Link>
             </div>
           </div>

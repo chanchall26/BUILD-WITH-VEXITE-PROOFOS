@@ -317,6 +317,10 @@ export const zTelemetry = z.object({
   pastedChars: z.number().min(0),
   typedChars: z.number().min(0),
   revisions: z.number().min(0),
+  focusLosses: z.number().min(0).optional(),
+  fullscreenExits: z.number().min(0).optional(),
+  copyEvents: z.number().min(0).optional(),
+  secondsAway: z.number().min(0).optional(),
 });
 
 export const zCounterpartRequest = z.object({

@@ -75,19 +75,19 @@ export default function VerifyPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-12">
-      <span className="eyebrow">Verifier</span>
-      <h1 className="headline mt-3">Check a passport without asking us anything.</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted">
-        Paste the presentation. The signature is checked against the issuer&apos;s Ed25519
-        key, which anyone can fetch once from{" "}
-        <a
-          href="/.well-known/did.json"
-          className="text-signal underline underline-offset-2"
-        >
-          the did:web document
+      <span className="eyebrow">Check a result</span>
+      <h1 className="headline mt-3">Is this real, and has it been changed?</h1>
+      <p className="mt-3 text-[15.5px] leading-relaxed text-muted">
+        Paste someone&apos;s results below. We check the digital signature and tell you
+        straight away. You do not need an account, we do not look anything up, and we do not
+        keep a record that you checked.
+      </p>
+      <p className="mt-2 text-[13px] leading-relaxed text-dim">
+        Anyone can download{" "}
+        <a href="/.well-known/did.json" className="text-signal underline underline-offset-2">
+          our public key
         </a>{" "}
-        and keep. Every disclosed claim is checked against what the issuer actually signed.
-        No account, no lookup, no record of the check.
+        once and do this check themselves, forever, without us.
       </p>
 
       <textarea
@@ -95,29 +95,29 @@ export default function VerifyPage() {
         onChange={(e) => setToken(e.target.value)}
         rows={7}
         spellCheck={false}
-        placeholder="eyJhbGciOiJFZERTQSIsInR5cCI6InZjK3NkLWp3dCJ9…~WyJ...~"
-        aria-label="Credential to verify"
+        placeholder="Paste the long code someone sent you…"
+        aria-label="Results code to check"
         className="field mt-7 resize-none break-all font-mono text-[11.5px] leading-relaxed"
       />
 
       <div className="mt-3 flex flex-wrap gap-2.5">
         <button
-          className="btn btn-primary"
+          className="btn btn-primary btn-lg"
           disabled={busy || !token.trim()}
           onClick={() => void verify(token)}
         >
-          {busy ? "Verifying…" : "Verify"}
+          {busy ? "Checking…" : "Check it"}
         </button>
         <button className="btn btn-ghost" onClick={loadMine}>
-          Use my passport
+          Use my own results
         </button>
         <button className="btn btn-ghost" disabled={!token} onClick={tamper}>
-          Tamper with it
+          Change one character
         </button>
       </div>
-      <p className="mt-2 text-[12px] text-dim">
-        Tampering flips a single character inside the signed payload. Try it: an edited
-        score stops verifying immediately.
+      <p className="mt-2 text-[12.5px] text-dim">
+        Try the last button. It changes a single character, and the check fails instantly.
+        That is what stops anyone editing their scores.
       </p>
 
       {outcome && (
@@ -155,15 +155,15 @@ export default function VerifyPage() {
               >
                 {outcome.valid
                   ? outcome.revoked
-                    ? "Signature valid, but revoked"
-                    : "Signature valid"
+                    ? "Real, but withdrawn"
+                    : "Real and unchanged"
                   : "Not valid"}
               </p>
               <p className="text-[12.5px] text-dim">
                 {outcome.valid
                   ? outcome.revoked
-                    ? "The issuer has withdrawn this credential. Do not rely on it."
-                    : `Checked offline in ${outcome.ms ?? 0}ms against the published key.`
+                    ? "These results were withdrawn by whoever issued them. Do not rely on them."
+                    : `Checked in ${outcome.ms ?? 0}ms, without contacting anyone.`
                   : outcome.reason}
               </p>
             </div>
@@ -172,15 +172,15 @@ export default function VerifyPage() {
           {outcome.valid && (
             <>
               <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-edge-soft pt-5 text-[13px] sm:grid-cols-4">
-                <Field label="Holder" value={outcome.holder ?? "—"} />
-                <Field label="Observations" value={String(outcome.observationCount ?? 0)} />
-                <Field label="Sessions" value={String(outcome.sessionCount ?? 0)} />
-                <Field label="Withheld" value={String(outcome.withheld ?? 0)} />
+                <Field label="Name" value={outcome.holder ?? "—"} />
+                <Field label="Moments recorded" value={String(outcome.observationCount ?? 0)} />
+                <Field label="Tests taken" value={String(outcome.sessionCount ?? 0)} />
+                <Field label="Kept private" value={String(outcome.withheld ?? 0)} />
               </dl>
 
               {claims.length > 0 && (
                 <div className="mt-5 border-t border-edge-soft pt-5">
-                  <span className="eyebrow">Disclosed capabilities</span>
+                  <span className="eyebrow">Skills they chose to show</span>
                   <ul className="mt-3 space-y-2.5">
                     {claims.map((c) => {
                       const f = freshnessFor(c.dimension as Dimension, c.verifiedAt);
@@ -204,11 +204,11 @@ export default function VerifyPage() {
               )}
 
               {(outcome.withheld ?? 0) > 0 && (
-                <p className="mt-4 rounded-lg border border-edge-soft bg-void px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
-                  The holder withheld {outcome.withheld} further{" "}
-                  {outcome.withheld === 1 ? "claim" : "claims"}. You can see that something
-                  was held back, because the issuer committed to more digests than were
-                  disclosed. You cannot see what.
+                <p className="mt-4 rounded-lg border border-edge-soft bg-deep px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
+                  They kept {outcome.withheld} other{" "}
+                  {outcome.withheld === 1 ? "score" : "scores"} private. You can tell
+                  something was held back, but not what it was. That is by design: applying
+                  for one job should not mean handing over everything.
                 </p>
               )}
 
@@ -224,20 +224,21 @@ export default function VerifyPage() {
       )}
 
       <div className="panel mt-8 p-5">
-        <span className="eyebrow">What verification proves, and what it does not</span>
-        <ul className="mt-3 space-y-2 text-[13px] leading-relaxed text-muted">
-          <li>
-            It proves the issuer signed exactly these claims, and that nothing has been
-            edited since.
+        <span className="eyebrow">What this check does and does not prove</span>
+        <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-muted">
+          <li className="flex gap-2.5">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
+            It proves we issued exactly these scores, and that nobody has edited them since.
           </li>
-          <li>
-            It proves how much evidence stands behind the record, because the observation
-            count cannot be withheld.
+          <li className="flex gap-2.5">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
+            It proves how much evidence sits behind them, because that count cannot be
+            hidden.
           </li>
-          <li>
-            It does not prove the person handing it to you is the holder. Binding a
-            credential to a person is a separate problem, and pretending otherwise would be
-            the same mistake the identity vendors are making.
+          <li className="flex gap-2.5">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-alert" />
+            It does not prove the person who sent it is the person who earned it. That is a
+            different problem, and we are not going to pretend we have solved it.
           </li>
         </ul>
       </div>

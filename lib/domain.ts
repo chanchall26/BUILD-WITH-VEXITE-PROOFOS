@@ -128,7 +128,8 @@ export type ObservationKind =
   // authorship
   | "owned_decision"
   | "generic_defence"
-  | "unexplained_artifact";
+  | "unexplained_artifact"
+  | "left_the_test";
 
 export type ObservationSource = "counterpart" | "artifact" | "calibration" | "defence";
 export type Detector = "deterministic" | "model";
@@ -188,6 +189,7 @@ export const OBSERVATION_META: Record<
   owned_decision: { label: "Spoke to their own decision", dimension: "authorship", polarity: 1, weight: 1 },
   generic_defence: { label: "Defence would fit any submission", dimension: "authorship", polarity: -1, weight: 0.9 },
   unexplained_artifact: { label: "Work arrived from outside the session", dimension: "authorship", polarity: -1, weight: 1 },
+  left_the_test: { label: "Left the test repeatedly while working", dimension: "authorship", polarity: -1, weight: 0.5 },
 };
 
 // ---------------------------------------------------------------- challenge
@@ -292,6 +294,15 @@ export interface SessionTelemetry {
   pastedChars: number;
   typedChars: number;
   revisions: number;
+  /**
+   * Test-integrity counts. Every one of these is shown to the candidate live,
+   * while it is being counted. Monitoring somebody without telling them is how
+   * assessment loses people's trust, and none of these need a camera.
+   */
+  focusLosses?: number;
+  fullscreenExits?: number;
+  copyEvents?: number;
+  secondsAway?: number;
 }
 
 // ---------------------------------------------------------------- calibration

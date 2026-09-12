@@ -1,41 +1,126 @@
 @import "tailwindcss";
 
 /*
-  PROOFOS reads as trust infrastructure, not as a test.
-  Deep slate ground, one indigo-violet signal for the system itself, mint for
-  anything cryptographically verified, amber for anything a human should look at.
+  Colour is defined once, as a set of roles, and each theme fills those roles
+  with different values.
+
+  The names are POSITIONAL, not literal. "void" is the furthest-back surface,
+  "bright" is the highest-contrast text, "dim" is the quietest. In dark mode
+  void is nearly black; in light mode it is nearly white. Every component uses
+  the role, so nothing has to know which theme is on.
+
+  Light is the default so the page renders correctly before any script runs.
+  Dark is applied by preference or by explicit choice, and the toggle wins over
+  the preference in both directions.
 */
 
 @theme {
+  /* Surfaces, back to front */
+  --color-void: #f6f7fb;
+  --color-deep: #fbfcfe;
+  --color-slab: #ffffff;
+  --color-raise: #f0f2f8;
+  --color-edge: #d8dde8;
+  --color-edge-soft: #e6eaf2;
+
+  /* Text, loudest to quietest */
+  --color-bright: #10131c;
+  --color-muted: #4d5468;
+  --color-dim: #767d91;
+
+  /* The one accent */
+  --color-signal: #4257d4;
+  --color-signal-deep: #2f3ea8;
+  --color-violet: #7248e8;
+  --color-wash: #eceffd;
+  --color-on-signal: #ffffff;
+
+  /* Meaning */
+  --color-proof: #10805a;
+  --color-caution: #9c6510;
+  --color-alert: #c4293c;
+  --color-data: #0b6f80;
+
+  /* Depth */
+  --shadow-card: 0 1px 2px rgba(16, 19, 28, 0.04), 0 8px 24px rgba(16, 19, 28, 0.06);
+  --shadow-lift: 0 2px 4px rgba(16, 19, 28, 0.06), 0 14px 36px rgba(16, 19, 28, 0.1);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+/* Dark, by system preference, unless light was explicitly chosen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-void: #06080f;
+    --color-deep: #090c15;
+    --color-slab: #0e121d;
+    --color-raise: #141a29;
+    --color-edge: #212841;
+    --color-edge-soft: #191f30;
+
+    --color-bright: #e9edf7;
+    --color-muted: #9aa3ba;
+    --color-dim: #6a7287;
+
+    --color-signal: #7189ff;
+    --color-signal-deep: #4a5fd6;
+    --color-violet: #a07cff;
+    --color-wash: #161d38;
+    --color-on-signal: #070a14;
+
+    --color-proof: #3ddc97;
+    --color-caution: #f2a93b;
+    --color-alert: #ff6b7a;
+    --color-data: #4fd1e0;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+    --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.36);
+  }
+}
+
+/* Dark, chosen explicitly. Must also win when the system prefers light. */
+:root[data-theme="dark"] {
   --color-void: #06080f;
   --color-deep: #090c15;
   --color-slab: #0e121d;
-  --color-raise: #131828;
-  --color-edge: #1e2540;
-  --color-edge-soft: #161b2c;
+  --color-raise: #141a29;
+  --color-edge: #212841;
+  --color-edge-soft: #191f30;
 
   --color-bright: #e9edf7;
-  --color-muted: #8e98b2;
-  --color-dim: #5b6480;
+  --color-muted: #9aa3ba;
+  --color-dim: #6a7287;
 
   --color-signal: #7189ff;
   --color-signal-deep: #4a5fd6;
   --color-violet: #a07cff;
-  --color-wash: #131a33;
+  --color-wash: #161d38;
+  --color-on-signal: #070a14;
 
   --color-proof: #3ddc97;
   --color-caution: #f2a93b;
   --color-alert: #ff6b7a;
   --color-data: #4fd1e0;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.36);
 }
 
 html {
   background: var(--color-void);
-  color-scheme: dark;
   scroll-behavior: smooth;
+}
+
+:root[data-theme="dark"],
+:root:not([data-theme="light"]) {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -43,34 +128,35 @@ body {
   color: var(--color-bright);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 220ms ease, color 220ms ease;
 }
 
 /* Type ------------------------------------------------------------------ */
 
 .display {
-  font-size: clamp(2.4rem, 6.4vw, 4.75rem);
-  line-height: 0.98;
+  font-size: clamp(2.35rem, 6vw, 4.5rem);
+  line-height: 1;
   letter-spacing: -0.04em;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .headline {
-  font-size: clamp(1.6rem, 3.4vw, 2.5rem);
-  line-height: 1.1;
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  line-height: 1.12;
   letter-spacing: -0.03em;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .subhead {
-  font-size: clamp(1rem, 1.4vw, 1.175rem);
-  line-height: 1.55;
+  font-size: clamp(1.02rem, 1.4vw, 1.175rem);
+  line-height: 1.6;
   color: var(--color-muted);
 }
 
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-dim);
 }
@@ -89,24 +175,25 @@ body {
   border-radius: 14px;
 }
 
-/* Interactive cards lift very slightly. Enough to read as clickable, not
-   enough to make a dense page feel restless. */
-.panel-interactive {
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    transform 160ms ease;
-}
-.panel-interactive:hover {
-  border-color: #2b3457;
-  background: var(--color-raise);
-  transform: translateY(-1px);
+.panel-raised {
+  background: var(--color-slab);
+  border: 1px solid var(--color-edge);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
 }
 
-.panel-raised {
-  background: linear-gradient(180deg, var(--color-raise), var(--color-slab));
-  border: 1px solid var(--color-edge);
-  border-radius: 14px;
+/* Lifts just enough to read as clickable, not enough to make a dense page
+   feel restless. */
+.panel-interactive {
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.panel-interactive:hover {
+  border-color: var(--color-signal-deep);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
 }
 
 .signal-rule {
@@ -122,18 +209,16 @@ body {
 
 .aurora {
   background:
-    radial-gradient(58rem 30rem at 8% -10%, rgba(113, 137, 255, 0.16), transparent 60%),
-    radial-gradient(44rem 26rem at 88% 0%, rgba(160, 124, 255, 0.11), transparent 58%),
-    radial-gradient(36rem 22rem at 60% 12%, rgba(61, 220, 151, 0.05), transparent 62%);
+    radial-gradient(56rem 30rem at 8% -12%, color-mix(in srgb, var(--color-signal) 18%, transparent), transparent 60%),
+    radial-gradient(44rem 26rem at 90% -4%, color-mix(in srgb, var(--color-violet) 14%, transparent), transparent 58%);
 }
 
-/* Fine grid, the texture of an instrument rather than a poster. */
 .gridwork {
   background-image:
     linear-gradient(var(--color-edge-soft) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-edge-soft) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 78%);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 90% 55% at 50% 0%, #000 25%, transparent 76%);
 }
 
 /* Controls --------------------------------------------------------------- */
@@ -143,69 +228,83 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 9px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.625rem 1.05rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 550;
+  padding: 0.68rem 1.15rem;
   border: 1px solid transparent;
   transition:
-    background-color 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    opacity 140ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
   cursor: pointer;
   white-space: nowrap;
+  line-height: 1.2;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn:disabled {
-  opacity: 0.42;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .btn-primary {
   background: var(--color-signal);
-  color: #070a14;
+  color: var(--color-on-signal);
   font-weight: 600;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-signal) 40%, transparent);
 }
 .btn-primary:hover:not(:disabled) {
-  background: #8b9fff;
+  background: color-mix(in srgb, var(--color-signal) 86%, var(--color-bright));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-signal) 38%, transparent);
 }
 
 .btn-ghost {
   border-color: var(--color-edge);
   color: var(--color-bright);
-  background: transparent;
+  background: var(--color-slab);
 }
 .btn-ghost:hover:not(:disabled) {
   background: var(--color-raise);
-  border-color: #2b3457;
+  border-color: var(--color-signal-deep);
 }
 
 .btn-quiet {
   color: var(--color-muted);
   background: transparent;
-  padding: 0.5rem 0.7rem;
+  padding: 0.6rem 0.75rem;
 }
 .btn-quiet:hover:not(:disabled) {
-  color: var(--color-bright);
+  color: var(--color-signal);
+}
+
+.btn-lg {
+  font-size: 0.98rem;
+  padding: 0.82rem 1.5rem;
 }
 
 .field {
   width: 100%;
-  background: var(--color-void);
+  background: var(--color-deep);
   border: 1px solid var(--color-edge);
   border-radius: 10px;
-  padding: 0.7rem 0.85rem;
+  padding: 0.72rem 0.9rem;
   color: var(--color-bright);
-  font-size: 0.9rem;
-  transition: border-color 140ms ease;
+  font-size: 0.925rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .field::placeholder {
   color: var(--color-dim);
 }
 .field:focus {
   outline: none;
-  border-color: var(--color-signal-deep);
+  border-color: var(--color-signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-signal) 18%, transparent);
 }
 
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
@@ -220,18 +319,19 @@ body {
   gap: 0.35rem;
   border: 1px solid var(--color-edge);
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.22rem 0.62rem;
   font-size: 0.7rem;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
   color: var(--color-muted);
   white-space: nowrap;
+  background: var(--color-slab);
 }
 
 /* Meters ----------------------------------------------------------------- */
 
 .meter {
-  height: 4px;
+  height: 5px;
   width: 100%;
   overflow: hidden;
   border-radius: 999px;
@@ -242,27 +342,28 @@ body {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-signal-deep), var(--color-signal));
+  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .meter.is-proof > span {
-  background: linear-gradient(90deg, #23a873, var(--color-proof));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-proof) 70%, #000), var(--color-proof));
 }
 .meter.is-caution > span {
-  background: linear-gradient(90deg, #b87a1c, var(--color-caution));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-caution) 70%, #000), var(--color-caution));
 }
 .meter.is-alert > span {
-  background: linear-gradient(90deg, #c04a56, var(--color-alert));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-alert) 70%, #000), var(--color-alert));
 }
 
 /* Prose ------------------------------------------------------------------ */
 
 .copy p {
   margin-bottom: 0.85rem;
-  line-height: 1.65;
+  line-height: 1.68;
 }
 .copy h1,
 .copy h2,
 .copy h3 {
-  font-weight: 600;
+  font-weight: 650;
   margin: 1.5rem 0 0.55rem;
   letter-spacing: -0.02em;
 }
@@ -278,8 +379,8 @@ body {
 }
 .copy ul,
 .copy ol {
-  margin: 0 0 0.9rem 1.1rem;
-  line-height: 1.65;
+  margin: 0 0 0.9rem 1.15rem;
+  line-height: 1.68;
 }
 .copy ul {
   list-style: disc;
@@ -288,7 +389,7 @@ body {
   list-style: decimal;
 }
 .copy li {
-  margin-bottom: 0.28rem;
+  margin-bottom: 0.3rem;
 }
 .copy code {
   font-family: var(--font-mono);
@@ -296,13 +397,13 @@ body {
   background: var(--color-raise);
   border: 1px solid var(--color-edge-soft);
   border-radius: 5px;
-  padding: 0.08em 0.35em;
+  padding: 0.09em 0.36em;
 }
 .copy pre {
-  background: var(--color-void);
+  background: var(--color-deep);
   border: 1px solid var(--color-edge);
   border-radius: 10px;
-  padding: 0.85rem;
+  padding: 0.9rem;
   overflow-x: auto;
   margin-bottom: 0.9rem;
 }
@@ -311,11 +412,11 @@ body {
   border: none;
   padding: 0;
   font-size: 0.79rem;
-  line-height: 1.6;
+  line-height: 1.62;
 }
 .copy strong {
   color: var(--color-bright);
-  font-weight: 600;
+  font-weight: 650;
 }
 .copy table {
   width: 100%;
@@ -339,7 +440,7 @@ body {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(9px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -347,8 +448,12 @@ body {
   }
 }
 .rise {
-  animation: rise 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+/* Staggered entrances, so a section arrives rather than appears. */
+.rise-1 { animation-delay: 70ms; }
+.rise-2 { animation-delay: 140ms; }
+.rise-3 { animation-delay: 210ms; }
 
 @keyframes breathe {
   0%,
@@ -356,7 +461,7 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.28;
   }
 }
 .live-dot {
@@ -385,6 +490,22 @@ body {
   animation: sweep 1.9s linear infinite;
 }
 
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-alert) 50%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.recording {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+/* Everything stops for anyone who asked for less movement. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -403,8 +524,8 @@ body {
   scrollbar-color: var(--color-edge) transparent;
 }
 *::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
 }
 *::-webkit-scrollbar-thumb {
   background: var(--color-edge);

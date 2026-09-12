@@ -133,40 +133,40 @@ export default function EmployerPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12">
-      <span className="eyebrow">Employer</span>
+      <span className="eyebrow">For employers</span>
       <h1 className="headline mt-3 max-w-2xl">
-        What does this role need, and who can prove it?
+        What does this job need, and who can prove it?
       </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-        Gemini reads the posting and says which six capabilities the work actually depends
-        on. PROOFOS then reports how much of that each candidate has verified evidence for,
-        and how fresh it is. It never returns a hiring recommendation.
+      <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
+        Paste your job advert. We work out which six skills the work really needs, then show
+        how much of that each person has actually proved, and how recent that proof is. We
+        never tell you who to hire.
       </p>
 
       <div className="mt-9 grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         {/* Posting ------------------------------------------------------ */}
         <div className="panel-raised h-fit p-5">
           <label className="block">
-            <span className="mb-1.5 block text-[13px] text-muted">Job posting</span>
+            <span className="mb-1.5 block text-[13.5px] font-medium">Your job advert</span>
             <textarea
               value={posting}
               onChange={(e) => setPosting(e.target.value)}
               rows={11}
-              placeholder="Paste the posting, or a few honest sentences about what this person will actually do."
-              className="field resize-none font-mono text-[12.5px] leading-relaxed"
+              placeholder="Paste the advert, or just write a few honest sentences about what this person will actually do."
+              className="field resize-none text-[13px] leading-relaxed"
             />
           </label>
           <button
             className="btn btn-quiet mt-2 px-0 text-[12.5px]"
             onClick={() => setPosting(FIXTURE_ROLE_INPUT)}
           >
-            Use the sample posting
+            Use an example advert
           </button>
 
           <div className="mt-4 border-t border-edge-soft pt-4">
             <label className="block">
-              <span className="mb-1.5 block text-[13px] text-muted">
-                Or attach a PDF or a photograph
+              <span className="mb-1.5 block text-[13.5px] font-medium">
+                Or upload a PDF or photo
               </span>
               <input
                 type="file"
@@ -186,20 +186,20 @@ export default function EmployerPage() {
               className="mt-1 h-4 w-4 accent-[#7189ff]"
             />
             <span>
-              Calibrate against the live market.
+              Check what this job is really like today.
               <span className="block text-[12px] text-dim">
-                Postings overstate tooling and understate judgment. Gemini searches what the
-                role actually involves in 2026 before weighting it.
+                Adverts talk a lot about tools and barely mention judgement. We look up what
+                the job actually involves before deciding what matters.
               </span>
             </span>
           </label>
 
           <button
-            className="btn btn-primary mt-5 w-full"
+            className="btn btn-primary btn-lg mt-5 w-full"
             disabled={busy || (!posting.trim() && !file)}
             onClick={() => void analyse()}
           >
-            {busy ? "Reading the posting…" : "Analyse and match"}
+            {busy ? "Reading your advert…" : "Find who fits"}
           </button>
           {error && <p className="mt-3 text-[13px] text-alert">{error}</p>}
         </div>
@@ -209,8 +209,8 @@ export default function EmployerPage() {
           {!role && !busy && (
             <div className="panel flex min-h-[320px] items-center justify-center p-8 text-center">
               <p className="max-w-xs text-[13.5px] leading-relaxed text-dim">
-                The capability requirements appear here, then every candidate in the pool is
-                scored for coverage against them.
+                The six skills your job needs will appear here, then everyone who has taken
+                the test is scored against them.
               </p>
             </div>
           )}
@@ -219,8 +219,8 @@ export default function EmployerPage() {
             <div className="panel p-8">
               <p className="thinking text-[15px]">
                 {calibrate
-                  ? "Searching what this role really involves, then weighting it…"
-                  : "Working out which capabilities this role actually depends on…"}
+                  ? "Looking up what this job really involves, then weighing it up…"
+                  : "Working out which skills this job actually needs…"}
               </p>
             </div>
           )}
@@ -270,10 +270,10 @@ export default function EmployerPage() {
 
           {matches.length > 0 && (
             <div className="panel p-5">
-              <span className="eyebrow">Evidence coverage</span>
+              <span className="eyebrow">How much they have proved</span>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">
-                The share of what this role weights that each candidate has verified,
-                still-fresh evidence for. Not a ranking of people.
+                How much of what this job needs each person has actually proved, and proved
+                recently. This is not a ranking of people.
               </p>
               <ul className="mt-4 space-y-2.5">
                 {matches.map((m) => {
@@ -299,8 +299,8 @@ export default function EmployerPage() {
                         </div>
                         <p className="mt-2 text-[12px] text-dim">
                           {m.gaps.length === 0
-                            ? "Every capability this role weights is covered."
-                            : `Not covered: ${m.gaps.map((g) => DIMENSION_LABEL[g]).join(", ")}`}
+                            ? "Every skill this job needs is covered."
+                            : `Still to prove: ${m.gaps.map((g) => DIMENSION_LABEL[g]).join(", ")}`}
                         </p>
                       </button>
                     </li>
@@ -338,11 +338,11 @@ export default function EmployerPage() {
             <table className="mt-5 w-full border-collapse text-left text-[13px]">
               <thead>
                 <tr className="border-b border-edge">
-                  <th className="py-2 pr-3 font-medium text-dim">Capability</th>
-                  <th className="py-2 pr-3 font-medium text-dim">Role needs</th>
-                  <th className="py-2 pr-3 font-medium text-dim">Holds</th>
+                  <th className="py-2 pr-3 font-medium text-dim">Skill</th>
+                  <th className="py-2 pr-3 font-medium text-dim">Job needs</th>
+                  <th className="py-2 pr-3 font-medium text-dim">They have</th>
                   <th className="py-2 pr-3 font-medium text-dim">Fresh</th>
-                  <th className="py-2 font-medium text-dim">Note</th>
+                  <th className="py-2 font-medium text-dim">Why</th>
                 </tr>
               </thead>
               <tbody>
@@ -364,21 +364,21 @@ export default function EmployerPage() {
               </tbody>
             </table>
 
-            <p className="mt-5 rounded-lg border border-edge-soft bg-void px-4 py-3 text-[13px] leading-relaxed text-muted">
-              <span className="text-bright">{current.holder}</span> has verified evidence for{" "}
-              <span className="text-signal">{current.coverage}%</span> of this role&apos;s
-              defined capability requirements. PROOFOS does not recommend a decision. A named
-              reviewer makes it, with the evidence in front of them.
+            <p className="mt-5 rounded-lg border border-edge-soft bg-deep px-4 py-3 text-[13.5px] leading-relaxed text-muted">
+              <span className="font-medium text-bright">{current.holder}</span> has proved{" "}
+              <span className="font-medium text-signal">{current.coverage}%</span> of what
+              this job needs. We are not telling you to hire or reject. You decide, with the
+              proof in front of you.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2.5">
-              <button className="btn btn-ghost">Advance to interview</button>
-              <button className="btn btn-ghost">Request further verification</button>
-              <button className="btn btn-quiet">Record a decision</button>
+              <button className="btn btn-primary">Invite to interview</button>
+              <button className="btn btn-ghost">Ask for more proof</button>
+              <button className="btn btn-quiet">Save a decision</button>
             </div>
             <p className="mt-2 text-[11.5px] text-dim">
-              Decision controls are inert in this demo. What they would write is the human
-              oversight record required under Article 14 of the EU AI Act.
+              These buttons do nothing in the demo. In a real deployment they write the
+              record of who decided what, which the law now requires.
             </p>
           </div>
 

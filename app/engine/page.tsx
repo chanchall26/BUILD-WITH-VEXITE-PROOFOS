@@ -5,86 +5,71 @@ import Link from "next/link";
 import { MODELS } from "@/lib/config";
 import type { GeminiCall } from "@/lib/domain";
 
-const USES = [
+/**
+ * How the product works, written for the person taking the test.
+ *
+ * The technical detail is real and worth showing, but it belongs behind a
+ * disclosure. Somebody deciding whether to trust their career to this needs to
+ * know what is measured and what is not. They do not need our model names.
+ */
+
+const STEPS = [
   {
-    capability: "Structured output",
-    model: MODELS.architect,
-    where: "Challenge design, evidence extraction, role requirements, the written record",
-    why: "A rubric and an evidence list are data, not prose. Every one of them comes back against a JSON schema, so nothing downstream has to parse English.",
+    n: "1",
+    title: "We build a real task",
+    body: "From the job advert, or from the kind of work you picked. Real data, working tools, and four mistakes hidden inside it on purpose.",
   },
   {
-    capability: "Thinking level",
-    model: `${MODELS.architect} · ${MODELS.workhorse}`,
-    where: "High for design and evidence, low for counterpart replies",
-    why: "Designing a fair assessment deserves deliberation. A colleague's reply deserves to arrive before the candidate loses their train of thought.",
+    n: "2",
+    title: "You work, with an AI teammate",
+    body: "It looks things up and gives you confident answers. Four of them are wrong. You can see which tools it opened, so the clues are always there.",
   },
   {
-    capability: "Function calling",
-    model: MODELS.workhorse,
-    where: "The counterpart consulting simulated tools before it answers",
-    why: "It is what makes the counterpart a colleague rather than a chatbot, and it lets the interface show which data it read and which it skipped.",
+    n: "3",
+    title: "We write down what happened",
+    body: "Not opinions. Specific moments, quoted in your own words, each stamped with a time and a fingerprint so it cannot be changed later.",
   },
   {
-    capability: "Streaming",
-    model: MODELS.workhorse,
-    where: "The counterpart's reply, after it has consulted its tools",
-    why: "The counterpart has to feel like the tool the candidate uses daily, or the behaviour being measured is not the behaviour they would show at work.",
-  },
-  {
-    capability: "Multimodal input",
-    model: MODELS.architect,
-    where: "A job posting as a PDF or a photograph of a whiteboard",
-    why: "Hiring managers have a PDF and a screenshot, not a clean text field.",
-  },
-  {
-    capability: "Google Search grounding",
-    model: MODELS.workhorse,
-    where: "Market statistics on the landing page, optional role calibration",
-    why: "The numbers behind this product change quarterly, and postings describe a role as it was written rather than as it is worked. Both are cited so a reader can check them.",
-  },
-  {
-    capability: "Audio understanding",
-    model: MODELS.transcribe,
-    where: "The spoken defence",
-    why: "Speech becomes text, the audio is discarded, and nothing about the voice itself is measured or stored.",
-  },
-  {
-    capability: "Text-to-speech",
-    model: MODELS.speech,
-    where: "Reading the defence question aloud",
-    why: "Being asked a question is a different experience from reading one, and it is the moment the assessment stops feeling like a form.",
-  },
-  {
-    capability: "Embeddings",
-    model: MODELS.embedding,
-    where: "Evidence retrieval and capability matching",
-    why: "A record that never uses the words a hiring manager types still has to be findable.",
-  },
-  {
-    capability: "Seeded generation",
-    model: MODELS.architect,
-    where: "Evidence extraction and the written record",
-    why: "A fixed seed with a locked rubric means the same session evaluates the same way twice, which is the difference between an assessment and an opinion.",
-  },
-  {
-    capability: "Constrained truth distribution",
-    model: MODELS.architect,
-    where: "The trust-calibration set",
-    why: "The set has to break the link between how confident an output sounds and whether it deserves trust, which is a property of the whole set rather than any one item.",
-  },
-  {
-    capability: "Model fallback tiers",
-    model: `${MODELS.architect} → ${MODELS.workhorse} → fixtures`,
-    where: "Every call",
-    why: "Nobody's assessment fails because a preview model is busy.",
+    n: "4",
+    title: "Scores are calculated from that",
+    body: "Six skills, worked out from the moments we wrote down. Nothing is stored as a score. Ask why you got a number and you get the list.",
   },
 ];
 
-const REFUSED = [
-  "Whether a planted defect reached the finished work. That is normalised string comparison against a marker.",
-  "The trust-calibration score. That is arithmetic against a sealed answer key the browser never sees.",
-  "Any capability score. Each one is a pure function of the observations behind it.",
-  "Whether to hire anyone. The system produces coverage and evidence, and no decision at all.",
+const NOT_ALLOWED = [
+  {
+    q: "Did the AI's mistake end up in your work?",
+    a: "Decided by comparing text, letter by letter. No AI involved.",
+  },
+  {
+    q: "How did you do on the trust quiz?",
+    a: "Plain arithmetic against the real answers, which never leave our server.",
+  },
+  {
+    q: "What are your six skill scores?",
+    a: "Calculated from the recorded moments, by a formula anyone can check.",
+  },
+  {
+    q: "Should this person be hired?",
+    a: "We never answer this. There is no code anywhere that decides it.",
+  },
+];
+
+const MEASURED = [
+  "The work you wrote, and every message to your AI teammate",
+  "Which of the AI's mistakes you spotted, and which you did not",
+  "How often you asked it for evidence before believing it",
+  "Your answers in the trust quiz, and how confident you were",
+  "Whether you can explain your own choices out loud",
+  "Counts: pastes, edits, time taken, times you left the test",
+];
+
+const NOT_MEASURED = [
+  "Your face, your voice, or your screen",
+  "How you sound, your accent, or how fluent you are",
+  "Your background, your education, or where you live",
+  "Your mood, your personality, or anything guessed about you",
+  "Anything at all outside this one task",
 ];
 
 interface Pool {
@@ -92,7 +77,17 @@ interface Pool {
   sidelined: { key: number; model: string; retryInSeconds: number }[];
 }
 
-export default function EnginePage() {
+const TECHNICAL = [
+  ["Task design and marking", MODELS.architect, "Structured output, fixed seed, high reasoning"],
+  ["The AI teammate", MODELS.workhorse, "Tool calling, then streaming"],
+  ["Reading job adverts", MODELS.architect, "PDF and image understanding"],
+  ["Live statistics", MODELS.workhorse, "Web search with citations"],
+  ["Spoken answers", MODELS.transcribe, "Speech to text, audio then deleted"],
+  ["Reading questions aloud", MODELS.speech, "Text to speech"],
+  ["Matching skills to jobs", MODELS.embedding, "Embeddings"],
+];
+
+export default function HowItWorksPage() {
   const [calls, setCalls] = useState<GeminiCall[]>([]);
   const [demoMode, setDemoMode] = useState(false);
   const [pool, setPool] = useState<Pool>({ keys: 0, sidelined: [] });
@@ -108,177 +103,203 @@ export default function EnginePage() {
         })
         .catch(() => {});
     load();
-    const id = setInterval(load, 4000);
+    const id = setInterval(load, 5000);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12">
-      <span className="eyebrow">The Gemini engine</span>
-      <h1 className="headline mt-3 max-w-2xl">
-        Twelve capabilities, each doing one job it is actually suited to.
-      </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-        PROOFOS does not call one model for everything and call that an AI product. Each
-        part of the system picks the Gemini capability that fits it, and the log below is
-        live from this deployment.
-      </p>
-
-      {demoMode && (
-        <p className="mt-6 rounded-lg border border-signal-deep/40 bg-wash/60 px-4 py-3 text-[13px] leading-relaxed text-signal">
-          No <code className="font-mono">GEMINI_API_KEY</code> is configured, so calls are
-          served from deterministic fixtures and logged as such. Add a key and every row
-          below becomes a real request.
+    <div className="mx-auto max-w-5xl px-5 py-12">
+      <div className="rise">
+        <span className="eyebrow">How it works</span>
+        <h1 className="headline mt-3 max-w-2xl">
+          You should know exactly what is measured before you agree to it.
+        </h1>
+        <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
+          Most tests do not tell you this. Here is the whole thing, in four steps, with the
+          list of what we look at and what we refuse to look at.
         </p>
-      )}
+      </div>
 
-      {pool.keys > 1 && (
-        <div className="mt-6 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-          <span className="eyebrow">Key pool</span>
-          {Array.from({ length: pool.keys }, (_, i) => i + 1).map((n) => {
-            const cooling = pool.sidelined.filter((s) => s.key === n);
-            return (
-              <span
-                key={n}
-                className={`chip ${cooling.length ? "border-caution/40 text-caution" : "border-proof/40 text-proof"}`}
-                title={
-                  cooling.length
-                    ? cooling.map((c) => `${c.model} for ${c.retryInSeconds}s`).join(", ")
-                    : "available"
-                }
-              >
-                key {n}
-                {cooling.length ? ` · cooling ${Math.max(...cooling.map((c) => c.retryInSeconds))}s` : ""}
+      {/* Four steps ------------------------------------------------------ */}
+      <ol className="rise rise-1 mt-9 grid gap-px overflow-hidden rounded-xl border border-edge-soft bg-edge-soft sm:grid-cols-2">
+        {STEPS.map((s) => (
+          <li key={s.n} className="bg-slab p-6">
+            <div className="flex items-baseline gap-3">
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-signal text-[12px] font-semibold text-on-signal">
+                {s.n}
               </span>
-            );
-          })}
-          <span className="text-dim">
-            Gemini rate limits per key, so calls rotate across the pool and a refused key
-            steps aside until its window clears.
-          </span>
-        </div>
-      )}
+              <h2 className="text-[16.5px] font-semibold tracking-[-0.015em]">{s.title}</h2>
+            </div>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-muted">{s.body}</p>
+          </li>
+        ))}
+      </ol>
 
-      {pool.keys === 1 && pool.sidelined.length > 0 && (
-        <div className="mt-6 rounded-lg border border-caution/40 bg-caution/5 px-4 py-3 text-[13px] leading-relaxed text-caution">
-          <p>
-            The configured key has no quota right now for{" "}
-            {[...new Set(pool.sidelined.map((s) => s.model))].map((m) => (
-              <code key={m} className="font-mono">
-                {m}{" "}
-              </code>
-            ))}
-            so those tiers are skipped rather than retried on every request.
-          </p>
-          <p className="mt-1 text-dim">
-            Work continues on the next tier down, and the sideline lifts in{" "}
-            {Math.max(...pool.sidelined.map((s) => s.retryInSeconds))} seconds. Configure
-            several keys in <code className="font-mono">GEMINI_API_KEYS</code> for more
-            headroom.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-8 overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse text-left text-[13.5px]">
-          <thead>
-            <tr className="border-b border-edge">
-              <th className="py-3 pr-4 font-medium text-dim">Capability</th>
-              <th className="py-3 pr-4 font-medium text-dim">Model</th>
-              <th className="py-3 pr-4 font-medium text-dim">Where</th>
-              <th className="py-3 font-medium text-dim">Why there</th>
-            </tr>
-          </thead>
-          <tbody>
-            {USES.map((u) => (
-              <tr key={u.capability} className="border-b border-edge-soft align-top">
-                <td className="py-3.5 pr-4 font-medium text-bright">{u.capability}</td>
-                <td className="py-3.5 pr-4 font-mono text-[11.5px] text-data">{u.model}</td>
-                <td className="py-3.5 pr-4 text-muted">{u.where}</td>
-                <td className="py-3.5 leading-relaxed text-muted">{u.why}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Live log --------------------------------------------------------- */}
-      <div className="mt-12">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="eyebrow">Live call log</span>
-          <span className="chip border-data/30 text-data">
-            <span className="live-dot h-1.5 w-1.5 rounded-full bg-data" />
-            refreshing
-          </span>
-        </div>
-        <p className="mt-2 text-[13px] text-muted">
-          The last model calls this server instance made. Use the product in another tab and
-          watch them arrive.
-        </p>
-
-        <div className="panel mt-4 overflow-hidden">
-          {calls.length === 0 ? (
-            <p className="p-6 text-[13px] text-dim">
-              Nothing yet. Design a challenge or take one, then come back.
-            </p>
-          ) : (
-            <ul className="divide-y divide-[--color-edge-soft]">
-              {calls.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5">
-                  <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      c.ok ? (c.fixture ? "bg-signal" : "bg-proof") : "bg-alert"
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span className="text-[13px] text-bright">{c.label}</span>
-                  <span className="font-mono text-[11.5px] text-data">{c.model}</span>
-                  <span className="text-[11.5px] text-dim">{c.capability}</span>
-                  <span className="numeral ml-auto text-[11.5px] text-muted">{c.ms}ms</span>
-                  {c.note && (
-                    <span className="w-full truncate text-[11px] text-dim">{c.note}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-12 grid gap-5 md:grid-cols-2">
+      {/* What is and is not measured -------------------------------------- */}
+      <div className="rise rise-2 mt-6 grid gap-5 md:grid-cols-2">
         <div className="panel p-6">
-          <span className="eyebrow">What Gemini is not allowed to decide</span>
-          <ul className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-muted">
-            {REFUSED.map((r) => (
-              <li key={r} className="flex gap-2">
-                <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-alert" />
-                {r}
+          <h2 className="text-[15px] font-semibold text-proof">What we look at</h2>
+          <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
+            {MEASURED.map((m) => (
+              <li key={m} className="flex gap-2.5">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
+                {m}
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-[12.5px] leading-relaxed text-dim">
-            A model extracts evidence and must quote it verbatim. Any observation whose
-            quote does not appear in the session is discarded before it reaches a score.
-          </p>
         </div>
-
         <div className="panel p-6">
-          <span className="eyebrow">Read the prompts</span>
-          <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Every instruction sent to a model lives in one file rather than scattered
-            through route handlers, so the thing argued about in a fairness review is a
-            reviewable artifact rather than an archaeology exercise.
-          </p>
-          <p className="mt-3 font-mono text-[12px] text-data">lib/prompts.ts</p>
-          <p className="mt-3 text-[12.5px] leading-relaxed text-dim">
-            Each one carries the same standing instruction: assess only what is visible in
-            the work, and never infer personality, demographics, accent, fluency or
-            emotional state.
-          </p>
-          <Link href="/demo" className="btn btn-ghost mt-4">
-            Follow the demo path
-          </Link>
+          <h2 className="text-[15px] font-semibold text-alert">What we never look at</h2>
+          <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
+            {NOT_MEASURED.map((m) => (
+              <li key={m} className="flex gap-2.5">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-alert" />
+                {m}
+              </li>
+            ))}
+          </ul>
         </div>
+      </div>
+
+      {/* What the AI is not allowed to decide ----------------------------- */}
+      <section className="rise rise-3 mt-6">
+        <div className="panel-raised p-6">
+          <h2 className="text-[17px] font-semibold tracking-[-0.02em]">
+            Which parts the AI is not allowed to decide
+          </h2>
+          <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-muted">
+            An AI builds the task and points at things you said. It does not set your
+            scores. Anything you could reasonably argue with is calculated, so you can check
+            it and so it comes out the same every time.
+          </p>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+            {NOT_ALLOWED.map((item) => (
+              <div key={item.q} className="rounded-lg border border-edge-soft bg-deep p-4">
+                <dt className="text-[13.5px] font-medium">{item.q}</dt>
+                <dd className="mt-1.5 text-[13px] leading-relaxed text-muted">{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* Technical, folded away -------------------------------------------- */}
+      <details className="panel mt-6 p-6">
+        <summary className="cursor-pointer text-[14px] font-medium text-signal">
+          Technical details, for developers and reviewers
+        </summary>
+
+        <div className="mt-5 space-y-6">
+          <p className="text-[13.5px] leading-relaxed text-muted">
+            Built on the Google Gemini API. Each part of the system uses the capability that
+            actually fits it rather than sending everything to one model. Every instruction
+            we send lives in a single file, <code className="font-mono">lib/prompts.ts</code>
+            , so a disputed result can be argued about against something readable.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-edge">
+                  <th className="py-2 pr-4 font-medium text-dim">Where</th>
+                  <th className="py-2 pr-4 font-medium text-dim">Model</th>
+                  <th className="py-2 font-medium text-dim">Capability</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TECHNICAL.map(([where, model, capability]) => (
+                  <tr key={where} className="border-b border-edge-soft align-top">
+                    <td className="py-2.5 pr-4">{where}</td>
+                    <td className="py-2.5 pr-4 font-mono text-[11.5px] text-data">{model}</td>
+                    <td className="py-2.5 text-muted">{capability}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {demoMode && (
+            <p className="rounded-lg border border-signal-deep/40 bg-wash px-4 py-3 text-[13px] leading-relaxed text-signal">
+              No API key is configured, so everything runs from built-in sample answers and
+              is labelled as such. Add a key and every row below becomes a real request.
+            </p>
+          )}
+
+          {pool.keys > 1 && (
+            <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+              <span className="eyebrow">Key pool</span>
+              {Array.from({ length: pool.keys }, (_, i) => i + 1).map((n) => {
+                const cooling = pool.sidelined.filter((s) => s.key === n);
+                return (
+                  <span
+                    key={n}
+                    className={`chip ${cooling.length ? "border-caution/40 text-caution" : "border-proof/40 text-proof"}`}
+                  >
+                    key {n}
+                    {cooling.length
+                      ? ` · cooling ${Math.max(...cooling.map((c) => c.retryInSeconds))}s`
+                      : ""}
+                  </span>
+                );
+              })}
+              <span className="text-dim">
+                Requests rotate across the pool, and a rate-limited key steps aside until its
+                window clears.
+              </span>
+            </div>
+          )}
+
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow">Live call log</span>
+              <span className="chip border-data/40 text-data">
+                <span className="live-dot h-1.5 w-1.5 rounded-full bg-data" />
+                refreshing
+              </span>
+            </div>
+            <div className="panel mt-3 overflow-hidden">
+              {calls.length === 0 ? (
+                <p className="p-5 text-[13px] text-dim">
+                  Nothing yet. Use the product in another tab and come back.
+                </p>
+              ) : (
+                <ul className="divide-y divide-[--color-edge-soft]">
+                  {calls.slice(0, 20).map((c) => (
+                    <li
+                      key={c.id}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5"
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          c.ok ? (c.fixture ? "bg-signal" : "bg-proof") : "bg-alert"
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="text-[13px]">{c.label}</span>
+                      <span className="font-mono text-[11.5px] text-data">{c.model}</span>
+                      {c.key && <span className="text-[11px] text-dim">key {c.key}</span>}
+                      <span className="numeral ml-auto text-[11.5px] text-muted">
+                        {c.ms}ms
+                      </span>
+                      {c.note && (
+                        <span className="w-full truncate text-[11px] text-dim">{c.note}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/challenge" className="btn btn-primary btn-lg">
+          Take the test
+        </Link>
+        <Link href="/demo" className="btn btn-ghost">
+          Guided tour
+        </Link>
       </div>
     </div>
   );

@@ -6,6 +6,11 @@ import { CalibrationStep } from "@/components/challenge/calibration-step";
 import { CounterpartPanel } from "@/components/challenge/counterpart-panel";
 import { DefenceStep } from "@/components/challenge/defence-step";
 import {
+  AwayCurtain,
+  FocusBar,
+  useFocusGuard,
+} from "@/components/challenge/focus-mode";
+import {
   DOMAINS,
   DOMAIN_LABEL,
   type CalibrationAnswer,
@@ -17,26 +22,35 @@ import {
 
 type Stage =
   | "pick"
-  | "designing"
+  | "building"
   | "consent"
   | "brief"
   | "work"
   | "calibration"
   | "defence"
-  | "evaluating";
+  | "scoring";
 
-const RECORDED = [
-  "The work you produce, and every message you exchange with the AI counterpart.",
-  "Your judgements in the calibration set, and how far you said you would act on each one.",
-  "A transcript of two short spoken answers about your own decisions. The audio is discarded once transcribed.",
-  "Counts only: paste events, edits, and elapsed time.",
+/** The steps a candidate walks through, for the progress bar. */
+const STEPS: { stage: Stage; label: string }[] = [
+  { stage: "brief", label: "Read the situation" },
+  { stage: "work", label: "Do the work" },
+  { stage: "calibration", label: "Judge 10 AI answers" },
+  { stage: "defence", label: "Explain your choices" },
+  { stage: "scoring", label: "Get your results" },
 ];
 
-const NOT_RECORDED = [
-  "No camera, no screen recording, no browser lockdown, no extension.",
-  "No analysis of your voice for accent, emotion, tone or fluency.",
-  "Nothing inferred about you beyond the decisions visible in this task.",
-  "No hire or reject decision is produced by this system.",
+const WE_RECORD = [
+  "The work you write, and everything you say to your AI teammate.",
+  "Your answers in the trust quiz.",
+  "The words from two short spoken answers. The recording itself is deleted straight after.",
+  "Simple counts: pastes, edits, time taken, and times you left the test.",
+];
+
+const WE_NEVER = [
+  "No camera. No microphone recording kept. No screen recording.",
+  "Nothing about how you sound, your accent, or your mood.",
+  "Nothing about you outside this task.",
+  "No automatic yes or no. A person decides.",
 ];
 
 export default function ChallengePage() {
@@ -44,7 +58,7 @@ export default function ChallengePage() {
   const [stage, setStage] = useState<Stage>("pick");
   const [domain, setDomain] = useState<Domain>("software");
   const [roleContext, setRoleContext] = useState("");
-  const [calibrateRole, setCalibrateRole] = useState(false);
+  const [useSearch, setUseSearch] = useState(false);
   const [challenge, setChallenge] = useState<ChallengeSpec | null>(null);
   const [holder, setHolder] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -62,12 +76,16 @@ export default function ChallengePage() {
   const typedChars = useRef(0);
   const revisions = useRef(0);
 
-  // Deep link straight into the seeded challenge, for the demo path.
+  // Integrity monitoring runs from the moment the task opens until submission.
+  const guarded = stage === "work" || stage === "calibration" || stage === "defence";
+  const { counts, isFullscreen, away, enterFullscreen, exitFullscreen } =
+    useFocusGuard(guarded);
+
   useEffect(() => {
     if (window.location.hash !== "#seeded") return;
     let cancelled = false;
     void (async () => {
-      setStage("designing");
+      setStage("building");
       try {
         const res = await fetch("/api/challenge");
         const data = await res.json();
@@ -78,7 +96,7 @@ export default function ChallengePage() {
         setStage("consent");
       } catch {
         if (cancelled) return;
-        setError("Could not load the seeded challenge.");
+        setError("We could not load the sample test. Please refresh.");
         setStage("pick");
       }
     })();
@@ -87,11 +105,11 @@ export default function ChallengePage() {
     };
   }, []);
 
-  async function design(seeded: boolean) {
-    setStage("designing");
+  async function build(sample: boolean) {
+    setStage("building");
     setError(null);
     try {
-      const res = seeded
+      const res = sample
         ? await fetch("/api/challenge")
         : await fetch("/api/challenge", {
             method: "POST",
@@ -99,22 +117,20 @@ export default function ChallengePage() {
             body: JSON.stringify({
               domain,
               roleContext: roleContext.trim() || undefined,
-              calibrate: calibrateRole,
+              calibrate: useSearch,
             }),
           });
       const data = await res.json();
-      if (!res.ok || !data.challenge) throw new Error(data?.error ?? "Design failed.");
+      if (!res.ok || !data.challenge) throw new Error(data?.error ?? "Could not build it.");
       setChallenge(data.challenge);
       setWork(data.challenge.workspaceSeed ?? "");
       setStage("consent");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not design a challenge.");
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
       setStage("pick");
     }
   }
 
-  /** Telemetry counters live in refs, so they are updated here rather than
-   *  inside a state updater, which must stay a pure function of its input. */
   function onWorkChange(next: string) {
     const delta = next.length - work.length;
     if (delta > 0) typedChars.current += delta;
@@ -124,7 +140,8 @@ export default function ChallengePage() {
 
   async function submit(defence: DefenceAnswer[]) {
     if (!challenge) return;
-    setStage("evaluating");
+    setStage("scoring");
+    void exitFullscreen();
     try {
       const res = await fetch("/api/evaluate", {
         method: "POST",
@@ -143,52 +160,55 @@ export default function ChallengePage() {
             pastedChars: pastedChars.current,
             typedChars: typedChars.current,
             revisions: revisions.current,
+            ...counts,
           },
         }),
       });
-      if (!res.ok) throw new Error((await res.json())?.error ?? "Evaluation failed.");
+      if (!res.ok) throw new Error((await res.json())?.error ?? "Scoring failed.");
       sessionStorage.setItem("proofos.result", await res.text());
       router.push("/passport");
     } catch (e) {
       setError(
         e instanceof Error
-          ? `${e.message} Your work is still here — try submitting again.`
-          : "Evaluation failed.",
+          ? `${e.message} Your work is safe — press submit again.`
+          : "Scoring failed. Your work is safe.",
       );
       setStage("defence");
     }
   }
 
   // ------------------------------------------------------------------ pick
-  if (stage === "pick" || stage === "designing") {
+  if (stage === "pick" || stage === "building") {
+    const busy = stage === "building";
     return (
       <Shell>
-        <span className="eyebrow">Proof challenge</span>
-        <h1 className="headline mt-3 max-w-2xl">
-          Pick the work you want on the record.
-        </h1>
-        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-          Gemini designs a twelve-minute simulation from that world, with real tools, real
-          evidence, and an AI coworker that is confidently wrong four times.
-        </p>
+        <div className="rise">
+          <span className="eyebrow">The test · about 16 minutes</span>
+          <h1 className="headline mt-3 max-w-2xl">What kind of work do you do?</h1>
+          <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
+            Pick one and we will build a short, realistic task from that world. You will
+            work on it alongside an AI teammate. That teammate will be confidently wrong
+            four times, and noticing is the point.
+          </p>
+        </div>
 
         {error && (
-          <p className="mt-5 rounded-lg border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
+          <p className="mt-5 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
             {error}
           </p>
         )}
 
-        <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <div className="rise rise-1 mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {DOMAINS.map((d) => (
             <button
               key={d}
               onClick={() => setDomain(d)}
               aria-pressed={domain === d}
-              disabled={stage === "designing"}
-              className={`rounded-xl border p-4 text-left transition-colors ${
+              disabled={busy}
+              className={`panel-interactive rounded-xl border p-4 text-left ${
                 domain === d
                   ? "border-signal bg-wash text-bright"
-                  : "border-edge-soft bg-slab text-muted hover:border-edge hover:text-bright"
+                  : "border-edge-soft bg-slab text-muted"
               }`}
             >
               <span className="text-[14px] font-medium">{DOMAIN_LABEL[d]}</span>
@@ -196,58 +216,56 @@ export default function ChallengePage() {
           ))}
         </div>
 
-        <div className="mt-6 max-w-2xl">
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] text-muted">
-              Anything about the role, optional
-            </span>
+        <details className="rise rise-2 mt-6 max-w-2xl">
+          <summary className="cursor-pointer text-[13.5px] text-signal">
+            Want it tailored to a specific job? (optional)
+          </summary>
+          <div className="mt-3">
             <textarea
               value={roleContext}
               onChange={(e) => setRoleContext(e.target.value)}
               rows={3}
-              disabled={stage === "designing"}
-              placeholder="Paste a posting, or a sentence about what this person will actually do."
+              disabled={busy}
+              placeholder="Paste the job advert, or just say what the person will actually do day to day."
               className="field resize-none text-[13.5px]"
             />
-          </label>
-          <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-muted">
-            <input
-              type="checkbox"
-              checked={calibrateRole}
-              onChange={(e) => setCalibrateRole(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[#7189ff]"
-            />
-            <span>
-              Calibrate against the live market.
-              <span className="block text-[12px] text-dim">
-                Gemini searches what this role actually involves in 2026 before designing
-                the simulation, and cites what it read.
+            <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-muted">
+              <input
+                type="checkbox"
+                checked={useSearch}
+                onChange={(e) => setUseSearch(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
+              />
+              <span>
+                Check what this job is really like today first.
+                <span className="block text-[12px] text-dim">
+                  Takes a little longer. We look it up and show you our sources.
+                </span>
               </span>
-            </span>
-          </label>
-        </div>
+            </label>
+          </div>
+        </details>
 
-        <div className="mt-7 flex flex-wrap items-center gap-3">
+        <div className="rise rise-3 mt-8 flex flex-wrap items-center gap-3">
           <button
-            className="btn btn-primary"
-            disabled={stage === "designing"}
-            onClick={() => void design(false)}
+            className="btn btn-primary btn-lg"
+            disabled={busy}
+            onClick={() => void build(false)}
           >
-            {stage === "designing" ? "Designing…" : "Design my challenge"}
+            {busy ? "Building your test…" : "Build my test"}
           </button>
-          <button
-            className="btn btn-ghost"
-            disabled={stage === "designing"}
-            onClick={() => void design(true)}
-          >
-            Use the seeded scenario
+          <button className="btn btn-ghost" disabled={busy} onClick={() => void build(true)}>
+            Use the ready-made one
           </button>
-          {stage === "designing" && (
-            <span className="thinking text-[13px]">
-              writing competencies, tools, evidence and four planted defects…
-            </span>
-          )}
         </div>
+        {busy && (
+          <p className="thinking mt-4 text-[13.5px]">
+            Writing the situation, the data, the tools and four hidden mistakes…
+          </p>
+        )}
+        <p className="mt-3 text-[12.5px] text-dim">
+          The ready-made one starts instantly. Building a fresh one takes about 30 seconds.
+        </p>
       </Shell>
     );
   }
@@ -258,31 +276,33 @@ export default function ChallengePage() {
   if (stage === "consent") {
     return (
       <Shell>
-        <span className="eyebrow">{DOMAIN_LABEL[challenge.domain]}</span>
-        <h1 className="headline mt-3">{challenge.title}</h1>
-        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-          {challenge.roleContext} About {challenge.estimatedMinutes} minutes of work, then a
-          calibration set and two spoken questions.
-        </p>
+        <div className="rise">
+          <span className="eyebrow">{DOMAIN_LABEL[challenge.domain]}</span>
+          <h1 className="headline mt-3">{challenge.title}</h1>
+          <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">
+            {challenge.roleContext} About {challenge.estimatedMinutes} minutes of work, then
+            a short quiz and two spoken questions.
+          </p>
+        </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="rise rise-1 mt-8 grid gap-4 md:grid-cols-2">
           <div className="panel p-5">
-            <h2 className="text-[14px] font-semibold text-bright">What is recorded</h2>
+            <h2 className="text-[14.5px] font-semibold">What we record</h2>
             <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
-              {RECORDED.map((i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-signal" />
+              {WE_RECORD.map((i) => (
+                <li key={i} className="flex gap-2.5">
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-signal" />
                   {i}
                 </li>
               ))}
             </ul>
           </div>
           <div className="panel p-5">
-            <h2 className="text-[14px] font-semibold text-bright">What is never collected</h2>
+            <h2 className="text-[14.5px] font-semibold">What we never do</h2>
             <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted">
-              {NOT_RECORDED.map((i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-proof" />
+              {WE_NEVER.map((i) => (
+                <li key={i} className="flex gap-2.5">
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-proof" />
                   {i}
                 </li>
               ))}
@@ -290,41 +310,41 @@ export default function ChallengePage() {
           </div>
         </div>
 
-        <div className="panel mt-4 p-5">
-          <span className="eyebrow">Transparency notice</span>
+        <div className="panel rise rise-2 mt-4 p-5">
+          <span className="eyebrow">The full notice</span>
           <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
             {challenge.transparencyNotice}
           </p>
         </div>
 
-        <div className="mt-8 max-w-md space-y-4">
+        <div className="panel-raised rise rise-3 mt-6 max-w-lg p-5">
           <label className="block">
-            <span className="mb-1.5 block text-[13px] text-muted">Your name</span>
+            <span className="mb-1.5 block text-[13.5px] font-medium">Your name</span>
             <input
               className="field"
               value={holder}
               onChange={(e) => setHolder(e.target.value)}
-              placeholder="How it should read on your passport"
+              placeholder="This is what goes on your results"
             />
           </label>
-          <label className="flex cursor-pointer items-start gap-2.5 text-[13.5px] leading-relaxed text-muted">
+          <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13.5px] leading-relaxed text-muted">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[#7189ff]"
+              className="mt-1 h-4 w-4 accent-[var(--color-signal)]"
             />
-            I understand what is recorded and I want to take this challenge.
+            I have read the above and I want to take this test.
           </label>
           <button
-            className="btn btn-primary"
+            className="btn btn-primary btn-lg mt-5 w-full"
             disabled={!agreed}
             onClick={() => {
               startedAt.current = Date.now();
               setStage("brief");
             }}
           >
-            Begin
+            Start
           </button>
         </div>
       </Shell>
@@ -335,29 +355,30 @@ export default function ChallengePage() {
   if (stage === "brief") {
     return (
       <Shell>
-        <span className="eyebrow">The situation</span>
-        <h1 className="headline mt-3 max-w-3xl">{challenge.situation}</h1>
+        <Progress stage="brief" />
+        <div className="rise">
+          <span className="eyebrow">What is happening</span>
+          <h1 className="headline mt-3 max-w-3xl">{challenge.situation}</h1>
+        </div>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+        <div className="rise rise-1 mt-8 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
           <div className="panel-raised p-6">
-            <span className="eyebrow">What to deliver</span>
-            <p className="mt-2 text-[15px] leading-relaxed text-bright">
-              {challenge.deliverable}
-            </p>
+            <span className="eyebrow">Your job</span>
+            <p className="mt-2 text-[15.5px] leading-relaxed">{challenge.deliverable}</p>
             <h2 className="mt-6 text-[13px] font-semibold text-muted">
-              What the record will look for
+              We will be looking for
             </h2>
-            <ul className="mt-2 space-y-1.5 text-[13.5px] leading-relaxed text-muted">
+            <ul className="mt-2 space-y-2 text-[13.5px] leading-relaxed text-muted">
               {challenge.requirements.map((r) => (
-                <li key={r.id} className="flex gap-2">
-                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-dim" />
+                <li key={r.id} className="flex gap-2.5">
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-dim" />
                   {r.text}
                 </li>
               ))}
             </ul>
-            <p className="mt-4 border-t border-edge-soft pt-3 text-[12.5px] leading-relaxed text-dim">
-              Your AI counterpart has {challenge.tools.length} tools it can consult. You can
-              ask it what it looked at, and you should.
+            <p className="mt-5 rounded-lg border border-edge-soft bg-deep px-3.5 py-3 text-[13px] leading-relaxed text-muted">
+              Your AI teammate can look things up in {challenge.tools.length} tools. Ask it
+              what it checked. It does not always check the right one.
             </p>
           </div>
 
@@ -376,12 +397,18 @@ export default function ChallengePage() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <button className="btn btn-primary" onClick={() => setStage("work")}>
-            Open the workspace
+        <div className="rise rise-2 mt-8 flex flex-wrap items-center gap-3">
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => {
+              setStage("work");
+              void enterFullscreen();
+            }}
+          >
+            Open my workspace
           </button>
           <span className="text-[12.5px] text-dim">
-            The clock started when you pressed Begin. It is context, not a limit.
+            This will go full screen. You can leave at any time.
           </span>
         </div>
       </Shell>
@@ -391,7 +418,17 @@ export default function ChallengePage() {
   // ----------------------------------------------------------- calibration
   if (stage === "calibration") {
     return (
-      <div className="mx-auto max-w-4xl px-5 py-10">
+      <div className="mx-auto max-w-4xl px-5 py-8">
+        <Progress stage="calibration" />
+        <div className="mb-4">
+          <FocusBar
+            counts={counts}
+            isFullscreen={isFullscreen}
+            onEnterFullscreen={() => void enterFullscreen()}
+            onExitFullscreen={() => void exitFullscreen()}
+          />
+        </div>
+        <AwayCurtain visible={away} />
         <CalibrationStep
           domain={challenge.domain}
           situation={challenge.situation}
@@ -409,8 +446,18 @@ export default function ChallengePage() {
   if (stage === "defence") {
     return (
       <Shell>
+        <Progress stage="defence" />
+        <div className="mb-4">
+          <FocusBar
+            counts={counts}
+            isFullscreen={isFullscreen}
+            onEnterFullscreen={() => void enterFullscreen()}
+            onExitFullscreen={() => void exitFullscreen()}
+          />
+        </div>
+        <AwayCurtain visible={away} />
         {error && (
-          <p className="mb-4 rounded-lg border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
+          <p className="mb-4 rounded-xl border border-alert/40 bg-alert/5 px-4 py-3 text-[13.5px] text-alert">
             {error}
           </p>
         )}
@@ -423,18 +470,19 @@ export default function ChallengePage() {
     );
   }
 
-  // ------------------------------------------------------------ evaluating
-  if (stage === "evaluating") {
+  // --------------------------------------------------------------- scoring
+  if (stage === "scoring") {
     return (
       <Shell>
+        <Progress stage="scoring" />
         <div className="panel-raised p-10 text-center">
-          <p className="thinking text-[17px]">Building your evidence record…</p>
-          <ul className="mx-auto mt-6 max-w-md space-y-2 text-left text-[13px] text-dim">
-            <li>Checking which planted defects reached your finished work</li>
-            <li>Reading the conversation for what you questioned and what you accepted</li>
-            <li>Scoring your calibration against what each output actually deserved</li>
-            <li>Deriving six capabilities from the observations, and nothing else</li>
-            <li>Signing a passport that belongs to you</li>
+          <p className="thinking text-[18px]">Working out your results…</p>
+          <ul className="mx-auto mt-6 max-w-md space-y-2.5 text-left text-[13.5px] text-muted">
+            <li>Checking whether the AI&apos;s four mistakes ended up in your work</li>
+            <li>Reading what you questioned and what you accepted</li>
+            <li>Marking your trust quiz against the real answers</li>
+            <li>Working out six skill scores from what you actually did</li>
+            <li>Signing a result that belongs to you</li>
           </ul>
         </div>
       </Shell>
@@ -444,29 +492,49 @@ export default function ChallengePage() {
   // ------------------------------------------------------------- workspace
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-5">
+      <AwayCurtain visible={away} />
+
+      <div className="mb-3">
+        <Progress stage="work" compact />
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="eyebrow">Workspace</span>
-        <span className="max-w-xl truncate text-[13px] text-muted">
-          {challenge.deliverable}
-        </span>
-        <button className="btn btn-quiet ml-auto" onClick={() => setStage("brief")}>
-          Re-read the brief
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={() => setStage("calibration")}
-          disabled={work.trim().length < 40}
-        >
-          Submit and continue
-        </button>
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-medium">Your job</p>
+          <p className="max-w-2xl truncate text-[13px] text-muted">{challenge.deliverable}</p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <button className="btn btn-quiet" onClick={() => setStage("brief")}>
+            Read it again
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setStage("calibration")}
+            disabled={work.trim().length < 40}
+            title={
+              work.trim().length < 40 ? "Write a little more before moving on" : undefined
+            }
+          >
+            Done — next step
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <FocusBar
+          counts={counts}
+          isFullscreen={isFullscreen}
+          onEnterFullscreen={() => void enterFullscreen()}
+          onExitFullscreen={() => void exitFullscreen()}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <div className="panel flex min-h-[64vh] flex-col overflow-hidden">
+        <div className="panel flex min-h-[62vh] flex-col overflow-hidden">
           <div className="flex items-center gap-2 border-b border-edge-soft px-4 py-2.5">
             <span className="text-[12.5px] font-medium">Your work</span>
-            <span className="ml-auto text-[11px] text-dim">
-              {work.length} chars · {pasteCount} pastes
+            <span className="ml-auto text-[11.5px] text-dim">
+              {work.length} characters · {pasteCount} pastes
             </span>
           </div>
           <textarea
@@ -478,14 +546,14 @@ export default function ChallengePage() {
             }}
             spellCheck={false}
             aria-label="Your work"
-            className="min-h-0 flex-1 resize-none bg-void p-4 font-mono text-[13px] leading-relaxed text-bright outline-none"
+            className="min-h-0 flex-1 resize-none bg-deep p-4 font-mono text-[13px] leading-relaxed text-bright outline-none"
           />
-          <div className="border-t border-edge-soft px-4 py-2 text-[11px] text-dim">
-            Everything here becomes evidence, including what you paste and what you delete.
+          <div className="border-t border-edge-soft px-4 py-2 text-[11.5px] text-dim">
+            Write here. Everything you keep, change or paste becomes part of your record.
           </div>
         </div>
 
-        <div className="panel flex min-h-[64vh] flex-col overflow-hidden">
+        <div className="panel flex min-h-[62vh] flex-col overflow-hidden">
           <CounterpartPanel
             challenge={challenge}
             work={work}
@@ -498,6 +566,47 @@ export default function ChallengePage() {
   );
 }
 
+/** Where you are, out of five. */
+function Progress({ stage, compact = false }: { stage: Stage; compact?: boolean }) {
+  const index = STEPS.findIndex((s) => s.stage === stage);
+  return (
+    <ol
+      className={`flex flex-wrap items-center gap-x-2 gap-y-2 ${compact ? "mb-1" : "mb-8"}`}
+      aria-label={`Step ${index + 1} of ${STEPS.length}`}
+    >
+      {STEPS.map((s, i) => {
+        const done = i < index;
+        const now = i === index;
+        return (
+          <li key={s.stage} className="flex items-center gap-2">
+            <span
+              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10.5px] font-semibold ${
+                done
+                  ? "bg-proof/15 text-proof"
+                  : now
+                    ? "bg-signal text-on-signal"
+                    : "border border-edge text-dim"
+              }`}
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span
+              className={`text-[12.5px] ${now ? "font-medium text-bright" : "text-dim"} ${
+                compact && !now ? "hidden sm:inline" : ""
+              }`}
+            >
+              {s.label}
+            </span>
+            {i < STEPS.length - 1 && (
+              <span className="hidden h-px w-5 bg-edge-soft sm:inline-block" />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto max-w-5xl px-5 py-12">{children}</div>;
+  return <div className="mx-auto max-w-5xl px-5 py-10">{children}</div>;
 }
