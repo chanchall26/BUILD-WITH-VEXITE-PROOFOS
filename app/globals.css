@@ -1,26 +1,401 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  PROOFOS reads as trust infrastructure, not as a test.
+  Deep slate ground, one indigo-violet signal for the system itself, mint for
+  anything cryptographically verified, amber for anything a human should look at.
+*/
+
+@theme {
+  --color-void: #06080f;
+  --color-deep: #090c15;
+  --color-slab: #0e121d;
+  --color-raise: #131828;
+  --color-edge: #1e2540;
+  --color-edge-soft: #161b2c;
+
+  --color-bright: #e9edf7;
+  --color-muted: #8e98b2;
+  --color-dim: #5b6480;
+
+  --color-signal: #7189ff;
+  --color-signal-deep: #4a5fd6;
+  --color-violet: #a07cff;
+  --color-wash: #131a33;
+
+  --color-proof: #3ddc97;
+  --color-caution: #f2a93b;
+  --color-alert: #ff6b7a;
+  --color-data: #4fd1e0;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-void);
+  color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-void);
+  color: var(--color-bright);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Type ------------------------------------------------------------------ */
+
+.display {
+  font-size: clamp(2.4rem, 6.4vw, 4.75rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+}
+
+.headline {
+  font-size: clamp(1.6rem, 3.4vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+
+.subhead {
+  font-size: clamp(1rem, 1.4vw, 1.175rem);
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+.numeral {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+/* Surfaces --------------------------------------------------------------- */
+
+.panel {
+  background: var(--color-slab);
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 14px;
+}
+
+.panel-raised {
+  background: linear-gradient(180deg, var(--color-raise), var(--color-slab));
+  border: 1px solid var(--color-edge);
+  border-radius: 14px;
+}
+
+.signal-rule {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-signal-deep) 16%,
+    var(--color-signal) 48%,
+    var(--color-violet) 72%,
+    transparent
+  );
+}
+
+.aurora {
+  background:
+    radial-gradient(58rem 30rem at 8% -10%, rgba(113, 137, 255, 0.16), transparent 60%),
+    radial-gradient(44rem 26rem at 88% 0%, rgba(160, 124, 255, 0.11), transparent 58%),
+    radial-gradient(36rem 22rem at 60% 12%, rgba(61, 220, 151, 0.05), transparent 62%);
+}
+
+/* Fine grid, the texture of an instrument rather than a poster. */
+.gridwork {
+  background-image:
+    linear-gradient(var(--color-edge-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-edge-soft) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 78%);
+}
+
+/* Controls --------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.05rem;
+  border: 1px solid transparent;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-signal);
+  color: #070a14;
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #8b9fff;
+}
+
+.btn-ghost {
+  border-color: var(--color-edge);
+  color: var(--color-bright);
+  background: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-raise);
+  border-color: #2b3457;
+}
+
+.btn-quiet {
+  color: var(--color-muted);
+  background: transparent;
+  padding: 0.5rem 0.7rem;
+}
+.btn-quiet:hover:not(:disabled) {
+  color: var(--color-bright);
+}
+
+.field {
+  width: 100%;
+  background: var(--color-void);
+  border: 1px solid var(--color-edge);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  color: var(--color-bright);
+  font-size: 0.9rem;
+  transition: border-color 140ms ease;
+}
+.field::placeholder {
+  color: var(--color-dim);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--color-signal-deep);
+}
+
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--color-edge);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Meters ----------------------------------------------------------------- */
+
+.meter {
+  height: 4px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-edge-soft);
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-signal-deep), var(--color-signal));
+}
+.meter.is-proof > span {
+  background: linear-gradient(90deg, #23a873, var(--color-proof));
+}
+.meter.is-caution > span {
+  background: linear-gradient(90deg, #b87a1c, var(--color-caution));
+}
+.meter.is-alert > span {
+  background: linear-gradient(90deg, #c04a56, var(--color-alert));
+}
+
+/* Prose ------------------------------------------------------------------ */
+
+.copy p {
+  margin-bottom: 0.85rem;
+  line-height: 1.65;
+}
+.copy h1,
+.copy h2,
+.copy h3 {
+  font-weight: 600;
+  margin: 1.5rem 0 0.55rem;
+  letter-spacing: -0.02em;
+}
+.copy h1 {
+  font-size: 1.45rem;
+}
+.copy h2 {
+  font-size: 1.1rem;
+  color: var(--color-signal);
+}
+.copy h3 {
+  font-size: 0.98rem;
+}
+.copy ul,
+.copy ol {
+  margin: 0 0 0.9rem 1.1rem;
+  line-height: 1.65;
+}
+.copy ul {
+  list-style: disc;
+}
+.copy ol {
+  list-style: decimal;
+}
+.copy li {
+  margin-bottom: 0.28rem;
+}
+.copy code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-raise);
+  border: 1px solid var(--color-edge-soft);
+  border-radius: 5px;
+  padding: 0.08em 0.35em;
+}
+.copy pre {
+  background: var(--color-void);
+  border: 1px solid var(--color-edge);
+  border-radius: 10px;
+  padding: 0.85rem;
+  overflow-x: auto;
+  margin-bottom: 0.9rem;
+}
+.copy pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.79rem;
+  line-height: 1.6;
+}
+.copy strong {
+  color: var(--color-bright);
+  font-weight: 600;
+}
+.copy table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+.copy th,
+.copy td {
+  border-bottom: 1px solid var(--color-edge-soft);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+.copy hr {
+  border-color: var(--color-edge-soft);
+  margin: 1.3rem 0;
+}
+
+/* Motion ----------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.live-dot {
+  animation: breathe 1.7s ease-in-out infinite;
+}
+
+@keyframes sweep {
+  0% {
+    background-position: -220% 0;
+  }
+  100% {
+    background-position: 220% 0;
+  }
+}
+.thinking {
+  background: linear-gradient(
+    90deg,
+    var(--color-dim) 22%,
+    var(--color-signal) 50%,
+    var(--color-dim) 78%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sweep 1.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Scrollbars ------------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-edge);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
